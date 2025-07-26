@@ -4,3 +4,4 @@ __pycache__/
 venv
 .files
 __pycache__
+.env

@@ -9,7 +9,11 @@ async def on_message(msg: cl.Message):
     cb = cl.LangchainCallbackHandler()
     final_answer = cl.Message(content="")
     
-    for msg, metadata in graph.stream({"messages": [HumanMessage(content=msg.content)]}, stream_mode="messages", config=RunnableConfig(callbacks=[cb], **config)):
+    initial_state = {
+        "messages": [HumanMessage(content=msg.content)],
+        "last_stock_symbol": None
+    }
+    for msg, metadata in graph.stream(initial_state, stream_mode="messages", config=RunnableConfig(callbacks=[cb], **config)):
         if (
             msg.content
             and not isinstance(msg, HumanMessage)

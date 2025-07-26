@@ -7,19 +7,11 @@ from langchain.schema.runnable.config import RunnableConfig
 from langchain_core.messages import HumanMessage, BaseMessage, SystemMessage
 from langgraph.graph import END, StateGraph, START
 from langgraph.graph.message import MessagesState
-
-@tool
-def get_weather(city: Literal["nyc", "sf"]):
-    """Use this to get weather information."""
-    if city == "nyc":
-        return "It might be cloudy in nyc"
-    elif city == "sf":
-        return "It's always sunny in sf"
-    else:
-        raise AssertionError("Unknown city")
+from groww.get_instrument import get_instrument_by_groww_symbol
+from groww.get_holdings import get_holdings_for_user
 
 
-tools = [get_weather]
+tools = [get_instrument_by_groww_symbol,get_holdings_for_user]
 model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
 final_model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
 
