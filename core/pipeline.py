@@ -6,9 +6,52 @@ from patterns.postprocess import enrich_detections, warmup_cutoff
 from patterns.viz import overlay_patterns, make_signal_addplots
 from patterns.postprocess import summarize_signals
 from patterns.explain import daily_summary_md, recent_summary_md
-
+from rules.signals import compile_signals
+from sim.engine import simulate
+from sim.metrics import summarize, by_tag, audit_exits
+from sim.viz import overlay_trades, overlay_fills, overlay_signals_rail
+from sim.tune import try_presets
+from rules.gates import apply_gates
+from sim.report import export_backtest_excel, summarize_to_md
 
 import mplfinance as mpf
+
+cfg = {
+    "execution": {
+        "delay_bars": 1,
+        "enter_at": "Close",
+        "max_open_positions": 1,
+        "cooldown_bars":  int(CFG.get("cooldowns", {}).get("bars", 0)),  # from patterns.config
+        "max_hold_bars": 0,
+    },
+    "risk": {  # used by the simulator
+        "capital": 1_000_000.0,
+        "max_risk_per_trade": 0.005,
+        "position_sizing": "atr",   # or "fixed_cash"
+        "fixed_cash_per_trade": 50_000.0,
+    },
+    "filters": {
+        "min_atr": 0.0,
+        "warmup_cutoff_bars": 60,
+    },
+    "patterns": {
+        "Breakout20": {"side": "long",  "sl_atr": 1.5, "tp_atr": 3.0, "trail_atr": 1.0},
+        "Breakout55": {"side": "long",  "sl_atr": 2.0, "tp_atr": 4.0, "trail_atr": 1.5},
+        "Breakdown20": {"side": "short","sl_atr": 1.5, "tp_atr": 3.0, "trail_atr": 1.0},
+        "Breakdown55": {"side": "short","sl_atr": 2.0, "tp_atr": 4.0, "trail_atr": 1.5},
+        "PullbackToMA20": {"side": "long","sl_atr": 1.2, "tp_atr": 2.4, "trail_atr": 1.0},
+        "BB_BuyDip": {"side": "long",  "sl_atr": 1.2, "tp_atr": 2.0, "trail_atr": 0.8},
+        "BB_SellFade": {"side": "short","sl_atr": 1.5, "tp_atr": 3.0, "trail_atr": 1.0},
+        "RSI_40_Up": {"side": "long",  "sl_atr": 1.5, "tp_atr": 3.0},
+        "RSI_60_Down": {"side": "short","sl_atr": 1.5, "tp_atr": 3.0},
+        "Hammer": {"side": "long", "sl_atr": 1.5, "tp_atr": 3.0},
+        "BullishEngulfing": {"side": "long","sl_atr": 1.5, "tp_atr": 3.0},
+        "BearishEngulfing": {"side": "short","sl_atr": 1.5, "tp_atr": 3.0},
+        "Doji": {"side": "long","sl_atr": 1.2, "tp_atr": 2.0},
+    },
+    "defaults": {"sl_atr": 1.5, "tp_atr": 3.0, "trail_atr": 0.0},
+}
+
 
 if __name__ == "__main__":
     symbol = "SHALBY.NS"
@@ -46,20 +89,11 @@ if __name__ == "__main__":
     # print("======watchlist========")
     # print(watchlist)
     # print(watchlist.columns)
-    ax, idx = plot_candles_with_events(df_ohlcv, ind, symbol, events)
-    sig_ap = make_signal_addplots(idx, detections_enriched, panel=2,
-                              only_qualified=True, min_score=60)
-    # overlay_patterns(
-    #     ax, detections_enriched, idx,
-    #     only_qualified=True,   # show only watchlist-worthy
-    #     min_score=60,          # bump to 70 if still busy
-    #     families={"breakout","pullback"},  # or {"momentum","candles"} etc.
-    #     top_per_day=1,         # at most one marker per day
-    #     y_pos="top",           # or "bottom"
-    #     draw_lines=True        # set False to show labels only (no dashed lines)
-    # )
-    overlay_patterns(ax, detections_enriched, idx, only_qualified=True, min_score=70, top_per_day=1)
-    mpf.show()
+    # ax, idx = plot_candles_with_events(df_ohlcv, ind, symbol, events)
+    # sig_ap = make_signal_addplots(idx, detections_enriched, panel=2,
+    #                           only_qualified=True, min_score=60)
+    # overlay_patterns(ax, detections_enriched, idx, only_qualified=True, min_score=70, top_per_day=1)
+    # mpf.show()
 
     s = summarize_signals(detections_enriched)
     print({k:v for k,v in s.items() if k!="top_examples"})
@@ -73,3 +107,72 @@ if __name__ == "__main__":
 
     md5 = recent_summary_md(detections_enriched, df_ohlcv, ind_df, symbol, days=5)
     with open(f"{symbol}_recent_5.md","w") as f: f.write(md5)
+
+    cfg["disable_patterns"] = ["RSI_60_Down"]
+
+    cfg.setdefault("costs", {})
+    cfg["costs"].update({
+        "per_share": 0.0,     # e.g., 0.01 if you want per-share brokerage
+        "per_trade": 0.0,     # fixed fee per fill
+        "bps_fee": 0.0,       # commission in bps of notional (try 1–5 to start)
+        "slippage_bps": 2.0,  # typical 1–5 bps; set 0 to disable
+    })
+
+    # Keep the time stop that helped
+    cfg["execution"]["max_hold_bars"] = 10
+
+    # Mean-reversion: take profits faster; a touch stricter on trailing
+    cfg["patterns"]["BB_BuyDip"].update({"tp_atr": 1.6, "trail_atr": 1.0})
+    cfg["patterns"]["BB_SellFade"].update({"tp_atr": 1.6, "trail_atr": 1.2})
+
+    # gate knobs (optional)
+    cfg.setdefault("gates", {})
+    cfg["gates"]["bb_touch_eps"] = 0.0      # try 0.002 if you want slight slack
+    cfg["gates"]["pullback_ma_tol"] = 0.01  # 1% within MA20
+
+    cfg["execution"].update({"enter_at": "Open", "delay_bars": 1})
+
+    # optionally sideline clearly weak patterns for now
+    cfg["disable_patterns"] = ["Breakdown20"]
+
+    det_gated = apply_gates(detections_enriched, df_ohlcv, ind_df, cfg)
+    signals = compile_signals(det_gated, df_ohlcv, ind_df, cfg)
+    print(signals)
+
+
+    trades, equity, fills = simulate(df_ohlcv, signals, ind_df, cfg)
+    print(trades.head(15))
+    print(equity.tail())
+    print(fills.tail())
+
+    report = summarize(trades, equity)
+    print(report)
+
+    print("\nPer-pattern:")
+    by_pat = by_tag(trades)
+    print(by_pat.round(2).head(15))
+
+    print("\nAudit (SL/TP mismatches, if any):")
+    print(audit_exits(trades))
+
+    # out_path = "ultrabull_run.xlsx"
+    # export_backtest_excel(out_path, trades, equity, by_pattern=by_pat, signals=signals, cfg=cfg)
+
+    md = summarize_to_md(report, by_pat, title="Ultrabull Backtest — demo", notes="gate+slip on; RSI_60_Down pending disable")
+    print(md)
+
+    # Your existing candlestick plot call
+    fig, axlist = mpf.plot(
+        df_ohlcv,            # ['Open','High','Low','Close','Volume'] index matches df_ohlcv rows
+        type='candle',
+        volume=True,
+        returnfig=True,
+        style='yahoo',              # or your custom style
+    )
+    ax_price = axlist[0]
+    overlay_trades(ax_price, trades)
+    overlay_signals_rail(ax_price, signals)
+    mpf.show()
+
+    table = try_presets(detections_enriched, df_ohlcv, ind_df, cfg)
+    # print(table)

@@ -167,7 +167,7 @@ def plot_candles(df: pd.DataFrame, indicators: dict, symbol: str):
     plt.fill_between(bb_mid.index, bb_lower, bb_upper, alpha=0.2, label="BBands")
     plt.title(f"{symbol} — Candles + MA20/MA50 + BBands")
     plt.legend()
-    plt.show()
+    # plt.show()
 
 def plot_momentum(indicators: dict, symbol: str):
     """Plot RSI and MACD charts."""
@@ -182,7 +182,7 @@ def plot_momentum(indicators: dict, symbol: str):
     plt.axhline(30, linestyle="--", color="green")
     plt.title(f"{symbol} RSI")
     plt.legend()
-    plt.show()
+    # plt.show()
     
     # MACD plot
     plt.figure(figsize=(12,3))
@@ -195,7 +195,7 @@ def plot_momentum(indicators: dict, symbol: str):
     plt.bar(hist_line.index, hist_line, label="Hist", color="gray", alpha=0.6)
     plt.title(f"{symbol} MACD")
     plt.legend()
-    plt.show()
+    # plt.show()
 
 def analyze_symbol(symbol: str = "CAMS.NS", years: int = 1):
     # Load data
