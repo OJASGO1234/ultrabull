@@ -127,7 +127,7 @@ def enrich_detections(
     d = add_english(d, symbol)
     d = add_qualification(d)
     return d
-    
+
 def family_of(pattern: str) -> str:
     if pattern.startswith(("Breakout","Breakdown")): return "breakout"
     if pattern.startswith(("RSI_","MACD_")):         return "momentum"
@@ -157,3 +157,11 @@ def summarize_signals(d: pd.DataFrame) -> dict:
         ["date","pattern","score","direction","alignment"]
     ].head(5)
     return out
+
+
+def warmup_cutoff(ind_df: pd.DataFrame) -> pd.Timestamp:
+    """Latest first-valid date across core columns; use to filter early, unreliable hits."""
+    cols = ["MA20","MA50","RSI","ATR","BB_upper","BB_lower","MACD","MACD_signal"]
+    firsts = [ind_df[c].first_valid_index() for c in cols if c in ind_df.columns]
+    firsts = [t for t in firsts if t is not None]
+    return max(firsts) if firsts else ind_df.index[0]

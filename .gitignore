@@ -5,3 +5,5 @@ venv
 .files
 __pycache__
 .env
+.md
+.csv

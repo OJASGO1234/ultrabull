@@ -162,11 +162,10 @@ def daily_summary_md(
 
     # Mix by direction
     by_dir = day_hits["direction"].value_counts().to_dict() if "direction" in day_hits else {}
-    bull = by_dir.get("bullish", 0); bear = by_dir.get("bearish", 0)
+    bull = by_dir.get("bullish", 0); bear = by_dir.get("bearish", 0); neu = by_dir.get("neutral", 0)
 
     # By family (breakout/pullback/momentum/candles)
     fam_counts = day_hits["pattern"].map(_family_of).value_counts().to_dict()
-
 
     top_source = display_hits
     # Pick top N by score (fall back by pattern order)
@@ -177,8 +176,14 @@ def daily_summary_md(
 
     # Build markdown lines
     lines = []
-    lines.append(f"\n**Signals today:** {bull} bullish · {bear} bearish · by family: " +
-                 ", ".join(f"{k}={v}" for k,v in fam_counts.items()))
+    # lines.append(f"\n**Signals today:** {bull} bullish · {bear} bearish · by family: " +
+    #              ", ".join(f"{k}={v}" for k,v in fam_counts.items()))
+
+    mix = f"**Signals today:** {bull} bullish · {bear} bearish"
+    if neu: mix += f" · {neu} neutral"
+    mix += " · by family: " + ", ".join(f"{k}={v}" for k,v in fam_counts.items())
+    lines.append("\n" + mix)
+
 
     lines.append("\n**Top signals**")
     for _, r in top.iterrows():

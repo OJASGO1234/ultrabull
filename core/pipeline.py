@@ -2,7 +2,7 @@ from stock_explorer import analyze_symbol, load_events, plot_candles_with_events
 from vbt_to_pd_ind import build_ind_df_from_vbt, extract_symbol_df
 from patterns.config import CFG
 from patterns.pipeline import run_all_patterns
-from patterns.postprocess import enrich_detections
+from patterns.postprocess import enrich_detections, warmup_cutoff
 from patterns.viz import overlay_patterns, make_signal_addplots
 from patterns.postprocess import summarize_signals
 from patterns.explain import daily_summary_md, recent_summary_md
@@ -38,6 +38,9 @@ if __name__ == "__main__":
         symbol=symbol
     )
 
+    cut = warmup_cutoff(ind_df)
+    detections_enriched = detections_enriched[detections_enriched["date"] >= cut]
+
     detections_enriched.to_csv("patterns_with_explanations.csv", index=False)
     watchlist = detections_enriched[detections_enriched["qualified"]].sort_values(["date","score"], ascending=[False, False])
     # print("======watchlist========")
@@ -62,6 +65,11 @@ if __name__ == "__main__":
     print({k:v for k,v in s.items() if k!="top_examples"})
     print(s["top_examples"])
 
+    md = daily_summary_md(detections_enriched, df_ohlcv, ind_df, symbol)
+    print(md)
 
-    # print(daily_summary_md(detections_enriched, df_ohlcv, ind_df, symbol))
-    print(recent_summary_md(detections_enriched, df_ohlcv, ind_df, symbol, days=5))
+    with open(f"{symbol}_daily_summary.md","w") as f: f.write(md)
+    # print(recent_summary_md(detections_enriched, df_ohlcv, ind_df, symbol, days=5))
+
+    md5 = recent_summary_md(detections_enriched, df_ohlcv, ind_df, symbol, days=5)
+    with open(f"{symbol}_recent_5.md","w") as f: f.write(md5)
