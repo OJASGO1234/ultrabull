@@ -321,7 +321,7 @@ def _group_event_dates(events: pd.DataFrame, idx: pd.DatetimeIndex) -> dict[str,
         out[k] = sorted(pd.unique(out[k]))
     return out
 
-def plot_candles_with_events(df_raw: pd.DataFrame, indicators: dict, symbol: str, events: pd.DataFrame | None):
+def plot_candles_with_events(df_raw: pd.DataFrame, indicators: dict, symbol: str, events: pd.DataFrame | None, show=False):
     df = prepare_ohlcv_for_mpf(df_raw, symbol).sort_index()
     # Reindex indicators to sanitized df index
     ma20 = to_series(indicators['ma20'].ma).reindex(df.index)
@@ -456,7 +456,9 @@ def plot_candles_with_events(df_raw: pd.DataFrame, indicators: dict, symbol: str
         ]
         ax.legend(handles=handles, loc="upper left", framealpha=0.9)
     
-    mpf.show()
+    if show:
+        mpf.show()
+    return (ax, df.index)
 
 if __name__ == "__main__":
     df, ind, trend = analyze_symbol("CAMS.NS", years=1)
