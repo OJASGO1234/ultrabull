@@ -1,7 +1,7 @@
 # patterns/config.py
 CFG = {
-    "emit_min": 40,
-    "cooldowns": {"bars": 3},
+    "emit_min": 30,
+    "cooldowns": {"bars": 4},
     "candles": {
         "engulfing_ratio": 1.05,
         "hammer_shadow_ratio": 2.0,

@@ -4,6 +4,8 @@ from patterns.config import CFG
 from patterns.pipeline import run_all_patterns
 from patterns.postprocess import enrich_detections
 from patterns.viz import overlay_patterns, make_signal_addplots
+from patterns.postprocess import summarize_signals
+
 
 import mplfinance as mpf
 
@@ -54,3 +56,7 @@ if __name__ == "__main__":
     # )
     overlay_patterns(ax, detections_enriched, idx, only_qualified=True, min_score=70, top_per_day=1)
     mpf.show()
+
+    s = summarize_signals(detections_enriched)
+    print({k:v for k,v in s.items() if k!="top_examples"})
+    print(s["top_examples"])

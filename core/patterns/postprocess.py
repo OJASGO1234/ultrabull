@@ -127,3 +127,33 @@ def enrich_detections(
     d = add_english(d, symbol)
     d = add_qualification(d)
     return d
+    
+def family_of(pattern: str) -> str:
+    if pattern.startswith(("Breakout","Breakdown")): return "breakout"
+    if pattern.startswith(("RSI_","MACD_")):         return "momentum"
+    if pattern.startswith(("BB_","Pullback")):       return "pullback"
+    return "candles"
+
+def summarize_signals(d: pd.DataFrame) -> dict:
+    """
+    Quick sanity readout for one symbol:
+      - counts overall & per week
+      - counts by family (breakout/pullback/momentum/candles)
+      - top examples table
+    """
+    d = d.copy()
+    d["week"] = pd.to_datetime(d["date"]).dt.to_period("W").dt.start_time
+    out = {}
+    out["total_hits"] = len(d)
+    out["per_week_all"] = d.groupby("week").size().mean()
+    out["qualified_hits"] = int(d.get("qualified", pd.Series(dtype=bool)).sum())
+    out["per_week_qualified"] = (
+        d[d.get("qualified", False)].groupby("week").size().mean()
+        if "qualified" in d else 0
+    )
+    # family_of is already in postprocess.py
+    out["by_family"] = d.groupby(d["pattern"].map(family_of)).size().to_dict()
+    out["top_examples"] = d.sort_values("score", ascending=False)[
+        ["date","pattern","score","direction","alignment"]
+    ].head(5)
+    return out
