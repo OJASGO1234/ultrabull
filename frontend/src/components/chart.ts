@@ -2,11 +2,14 @@ import { createChart, type IChartApi } from 'lightweight-charts'
 import type { Theme } from '../theme'
 
 /** Common chart chrome: recessive hairline grid/axes, ink text, transparent bg
- * (the surrounding card supplies the surface color). */
+ * (the surrounding card supplies the surface color).
+ * The container gets a FIXED pixel height here — autoSize then only tracks
+ * width. Without this, autoSize + a content-driven container height feed back
+ * into each other and the chart grows downward forever. */
 export function makeChart(el: HTMLElement, t: Theme, height: number): IChartApi {
+  el.style.height = `${height}px`
   return createChart(el, {
     autoSize: true,
-    height,
     layout: {
       background: { color: 'transparent' },
       textColor: t.muted,
