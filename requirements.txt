@@ -1,4 +1,5 @@
 chainlit
+fastapi
 growwapi
 langchain
 langchain-core
@@ -11,5 +12,6 @@ pandas
 pyotp
 python-dotenv
 typing_extensions
+uvicorn[standard]
 vectorbt
 yfinance
