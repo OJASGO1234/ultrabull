@@ -117,4 +117,5 @@ export interface AnalysisResponse {
   audit: Audit
   signal_summary: SignalSummary
   summary_md: string
+  cached?: boolean
 }

@@ -94,7 +94,11 @@ export default function App() {
         <main className="results">
           <section className="run-head">
             <h2>
-              {data.symbol} <span className="run-meta">· {data.bars} bars · through {data.last_date}</span>
+              {data.symbol}{' '}
+              <span className="run-meta">
+                · {data.bars} bars · through {data.last_date}
+                {data.cached && ' · cached'}
+              </span>
             </h2>
             <AuditBadge audit={data.audit} />
           </section>

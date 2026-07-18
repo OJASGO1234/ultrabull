@@ -16,6 +16,8 @@ if CORE not in sys.path:
 
 import copy
 import math
+import threading
+import time
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
@@ -295,6 +297,58 @@ def run_analysis(symbol: str, years: float) -> dict:
     }
 
 
+# ---------- TTL cache (single-flight per key) ----------
+
+CACHE_TTL_SECONDS = float(os.getenv("ULTRABULL_CACHE_TTL", "900"))  # 15 min default
+CACHE_MAX_ENTRIES = 32
+
+_cache: dict[tuple[str, float], tuple[float, dict]] = {}  # key -> (stored_at, result)
+_cache_lock = threading.Lock()
+_inflight: dict[tuple[str, float], threading.Lock] = {}
+
+
+def _cache_get(key: tuple[str, float]) -> dict | None:
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit and time.time() - hit[0] < CACHE_TTL_SECONDS:
+            return hit[1]
+        return None
+
+
+def _cache_put(key: tuple[str, float], result: dict) -> None:
+    with _cache_lock:
+        now = time.time()
+        for k in [k for k, (ts, _) in _cache.items() if now - ts >= CACHE_TTL_SECONDS]:
+            del _cache[k]
+        if len(_cache) >= CACHE_MAX_ENTRIES:
+            oldest = min(_cache, key=lambda k: _cache[k][0])
+            del _cache[oldest]
+        _cache[key] = (now, result)
+
+
+def cached_analysis(symbol: str, years: float) -> tuple[dict, bool]:
+    """Return (result, was_cached). Concurrent misses on the same key run the
+    pipeline once; the rest wait on the per-key lock and read the fresh entry."""
+    key = (symbol, years)
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached, True
+
+    with _cache_lock:
+        flight = _inflight.setdefault(key, threading.Lock())
+    with flight:
+        cached = _cache_get(key)  # a racer may have filled it while we waited
+        if cached is not None:
+            return cached, True
+        try:
+            result = run_analysis(symbol, years)
+            _cache_put(key, result)
+            return result, False
+        finally:
+            with _cache_lock:
+                _inflight.pop(key, None)
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
@@ -306,7 +360,8 @@ def analyze(symbol: str, years: float = Query(0.5, gt=0.0, le=10.0)):
     if not symbol:
         raise HTTPException(status_code=422, detail="Empty symbol")
     try:
-        return run_analysis(symbol, years)
+        result, was_cached = cached_analysis(symbol, years)
     except ValueError as e:
         # load_data raises ValueError("No data for <symbol>") on unknown tickers
         raise HTTPException(status_code=404, detail=str(e))
+    return {**result, "cached": was_cached}
