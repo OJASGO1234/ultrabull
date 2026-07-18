@@ -1,0 +1,122 @@
+---
+title: Pattern Algorithms
+description: The exact boolean condition, parameters, and base score behind every pattern type.
+---
+
+All 11 detectors are pure vectorized pandas boolean masks over the full OHLCV +
+indicator history — there is no lookahead beyond what's explicit below (breakout
+rolling windows are `.shift(1)`'d so "today" is never inside its own lookback).
+Every detector's base score comes from `core/patterns/scoring.py::base(family)`:
+
+| Family | Base score |
+|---|---|
+| `candles` | 50 |
+| `breakout` | 60 |
+| `pullback` | 55 |
+| `momentum` | 50 |
+
+Final score = base + a fixed per-pattern modifier (shown below). These are the
+scores you see directly in the `score` column of the detections table before any
+gating.
+
+## Candles — `core/patterns/candles.py`
+
+**BullishEngulfing / BearishEngulfing** (`ratio = 1.05`, score = 50+5 = **55**)
+```text
+bull = prevClose < prevOpen  AND  close > open
+       AND |close-open| > |prevOpen-prevClose| * 1.05
+       AND high > prevHigh  AND  low < prevLow
+
+bear = prevClose > prevOpen  AND  close < open
+       AND |open-close| > |prevClose-prevOpen| * 1.05
+       AND high > prevHigh  AND  low < prevLow
+```
+Note the extra `high > prevHigh AND low < prevLow` clause — this requires an
+"outside bar" (a true engulfing of the *range*, not just the body) on top of the
+classic body-engulfing condition.
+
+**Hammer** (`hammer_shadow_ratio = 2.0`, score = 50+5 = **55**)
+```text
+body  = |close - open|
+upsh  = high - max(close, open)
+lowsh = min(close, open) - low
+hammer = lowsh >= 2.0 * body  AND  upsh <= 0.3 * body
+```
+
+**Doji** (`doji_body_pct = 0.10`, score = base only = **50**)
+```text
+body_pct = body / (high - low)
+doji = body_pct <= 0.10  AND  (high-low) >= rolling_median(high-low, 20)
+```
+The volatility filter (range ≥ 20-bar median range) exists specifically to
+exclude "doji" candles that are just low-volatility non-events.
+
+## Breakouts — `core/patterns/breakouts.py`
+
+**Breakout20 / Breakout55 / Breakdown20 / Breakdown55**
+(`lookbacks = [20, 55]`, `vol_k = 1.5`, score = 60+10 = **70**)
+```text
+rollingHigh_N = high.rolling(N).max().shift(1)     # prior N bars, excludes today
+rollingLow_N  = low.rolling(N).min().shift(1)
+volAvg20      = volume.rolling(20).mean()
+
+BreakoutN  = close > rollingHigh_N  AND  volume >= 1.5 * volAvg20
+BreakdownN = close < rollingLow_N   AND  volume >= 1.5 * volAvg20
+```
+
+## Pullbacks / mean reversion — `core/patterns/pullbacks.py`
+
+**PullbackToMA20** (`atr_tol_k = 0.5`, score = 55+5 = **60**)
+```text
+PullbackToMA20 = regime == uptrend
+                 AND |low - MA20| <= 0.5 * ATR
+                 AND close > MA20
+```
+
+**BB_BuyDip / BB_SellFade** (score = 55+5 = **60**)
+```text
+BB_BuyDip   = regime == uptrend    AND  low  <= BB_lower
+BB_SellFade = regime == downtrend  AND  high >= BB_upper
+```
+
+## Momentum — `core/patterns/momentum.py`
+
+**RSI_40_Up / RSI_60_Down** (`rsi_levels = [40, 60]`, score = 50+5 = **55**)
+```text
+RSI_40_Up   = RSI[t-1] < 40   AND  RSI[t] >= 40   # crossing UP through 40
+RSI_60_Down = RSI[t-1] > 60   AND  RSI[t] <= 60   # crossing DOWN through 60
+```
+Despite the naming symmetry, these are not "overbought/oversold" triggers — 40
+and 60 are mid-range crossings, closer to "momentum resuming" than an extreme
+reading.
+
+**MACD_Cross_Zeroish_Up / MACD_Cross_Zeroish_Down**
+(`macd_zero_eps_atr_pct = 0.25`, score = 50+10 = **60**)
+```text
+cross_up = MACD[t-1] <= Signal[t-1]  AND  MACD[t] > Signal[t]
+cross_dn = MACD[t-1] >= Signal[t-1]  AND  MACD[t] < Signal[t]
+
+norm  = ATR / Close                                    # ATR normalized to price
+near0 = |MACD| <= (0.25 / 100) * norm                  # i.e. within 0.25% of ATR-normalized price
+
+MACD_Cross_Zeroish_Up   = cross_up AND near0
+MACD_Cross_Zeroish_Down = cross_dn AND near0
+```
+This only fires when a MACD/signal crossover happens **close to the zero line**
+(scaled by volatility via ATR) — it's explicitly designed to exclude crossovers
+that happen far from zero (already-extended momentum swings).
+
+## Direction mapping
+
+`core/patterns/postprocess.py::direction_of()` assigns each pattern a directional
+bias, used for `alignment` and for defaulting a signal's `side` if no explicit
+`patterns.<tag>.side` override exists:
+
+| Bullish | Bearish |
+|---|---|
+| `Breakout20`, `Breakout55` | `Breakdown20`, `Breakdown55` |
+| `BB_BuyDip`, `PullbackToMA20` | `BB_SellFade` |
+| `BullishEngulfing`, `Hammer` | `BearishEngulfing` |
+| `RSI_40_Up`, `MACD_Cross_Zeroish_Up` | `RSI_60_Down`, `MACD_Cross_Zeroish_Down` |
+
+`Doji` maps to neutral (no directional bias, `alignment` is always `"neutral"`).

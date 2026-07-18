@@ -1,0 +1,127 @@
+---
+title: Indicators & Regime
+description: Exact formulas and parameters for every indicator, and how trend regime is decided.
+---
+
+All five indicators are computed once per run in
+`core/stock_explorer.py::compute_indicators`, via `vectorbt`'s indicator
+factories, then flattened into a single `ind_df` by
+`core/vbt_to_pd_ind.py::build_ind_df_from_vbt`.
+
+<Callout title="Read this before trusting the RSI/MACD numbers" type="warn">
+This pipeline calls vectorbt's indicators with their **library defaults**, which
+are not always the "textbook" variant most charting platforms show by default.
+Two differences matter enough to call out explicitly below: RSI here is
+**not** Wilder-smoothed, and MACD here is **SMA-based, not EMA-based**.
+</Callout>
+
+## Moving Averages — `MA20`, `MA50`
+
+```text
+vbt.MA.run(close, window=20)   # and window=50
+```
+Simple moving average (`ewm=False` is the library default): `MA_N[t] = mean(close[t-N+1 : t+1])`.
+
+## RSI(14)
+
+```text
+vbt.RSI.run(close, window=14)
+```
+With `ewm=False` (the default, and what's used here), vectorbt computes RSI from
+a **simple rolling mean** of gains/losses over 14 bars — sometimes called
+**Cutler's RSI** — rather than Wilder's exponential smoothing that most retail
+charting platforms (TradingView, etc.) use by default:
+
+```text
+up[t]   = max(close[t] - close[t-1], 0)
+down[t] = max(close[t-1] - close[t], 0)
+roll_up   = SMA(up, 14)
+roll_down = SMA(down, 14)
+RSI = 100 - 100 / (1 + roll_up / roll_down)
+```
+
+Practical effect: this RSI reacts a little faster / can print more extreme values
+around sharp moves than a Wilder-smoothed RSI on the same bars, because it has no
+memory decay from prior bars beyond the 14-bar window.
+
+## MACD(12, 26, 9)
+
+```text
+vbt.MACD.run(close)   # fast_window=12, slow_window=26, signal_window=9, macd_ewm=False, signal_ewm=False
+```
+
+With `macd_ewm=False` and `signal_ewm=False` (the defaults, and what's used here),
+**both the MACD line and the signal line are built from simple moving averages**,
+not the classic EMA-based MACD:
+
+```text
+MACD[t]        = SMA(close, 12)[t] - SMA(close, 26)[t]
+MACD_signal[t] = SMA(MACD, 9)[t]
+Hist[t]        = MACD[t] - MACD_signal[t]
+```
+
+This is the biggest divergence from a "standard" MACD you'll find on most
+platforms (which use EMA(12)-EMA(26) and an EMA(9) signal). The shape is
+qualitatively similar but crossovers land on different bars and the line is
+smoother/laggier here.
+
+## Bollinger Bands(20, 2.0σ)
+
+```text
+vbt.BBANDS.run(close, window=20, alpha=2.0)   # ewm=False
+```
+
+```text
+BB_mid   = SMA(close, 20)
+BB_std   = population stddev(close, 20)     # ddof=0
+BB_upper = BB_mid + 2.0 * BB_std
+BB_lower = BB_mid - 2.0 * BB_std
+```
+
+## ATR(14)
+
+```text
+vbt.ATR.run(high, low, close, window=14)   # ewm=True (this one defaults to EWM, unlike the others)
+```
+
+True Range uses the standard three-way formula, then ATR is an **exponentially
+weighted** average of it (this is the one indicator here that defaults to
+`ewm=True`):
+
+```text
+TR[t] = max(high[t]-low[t], |high[t]-close[t-1]|, |low[t]-close[t-1]|)     # TR[0] = high[0]-low[0]
+ATR   = EWM(TR, span=14)      # alpha = 2/(14+1) ≈ 0.133, pandas-style span EWM (not Wilder's alpha=1/14)
+```
+
+ATR is the single most load-bearing indicator downstream — it drives pullback
+tolerance, MACD "near-zero" normalization, position sizing, and every SL/TP/
+trailing-stop distance (see
+[Signal compilation & execution](/docs/statistical/signals-execution)).
+
+## Trend regime — two different calculations exist
+
+There are **two independent regime calculations** in this codebase, and they are
+used for different purposes:
+
+1. **`detect_trend()`** in `core/stock_explorer.py` — used only for the single
+   exploratory "Latest trend: …" print in `analyze_symbol()`. Requires **both** a
+   moving-average cross **and** 20-bar momentum agreeing:
+   ```text
+   Uptrend   if MA20 > MA50 AND close.pct_change(20) > 0
+   Downtrend if MA20 < MA50 AND close.pct_change(20) < 0
+   else Neutral
+   ```
+2. **`regime_from()`** in `core/patterns/primitives.py` — this is the one that
+   actually feeds every pattern's `regime` column, `alignment`, and every gate:
+   ```text
+   uptrend   if MA20 > MA50
+   downtrend if MA20 < MA50
+   neutral   otherwise (equal)
+   ```
+   Pure MA-cross, no momentum confirmation. This is intentionally simpler and
+   more reactive than `detect_trend()` — the pattern/gate/alignment logic never
+   sees "Neutral vs momentum-confirmed Uptrend," only the MA20-vs-MA50 sign.
+
+If you're reconciling why a printed "Latest trend: Neutral" doesn't match the
+regime a specific pattern was tagged with that same day, this is why — they are
+two different functions with different definitions of "trend."

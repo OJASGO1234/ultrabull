@@ -1,0 +1,15 @@
+chainlit
+growwapi
+langchain
+langchain-core
+langchain-openai
+langgraph
+matplotlib
+mplfinance
+numpy
+pandas
+pyotp
+python-dotenv
+typing_extensions
+vectorbt
+yfinance

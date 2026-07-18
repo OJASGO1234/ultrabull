@@ -1,0 +1,106 @@
+---
+title: Scoring, Deduplication & Gates
+description: Strength buckets, cooldown dedup, the qualification rule, context features, and the second-pass gate thresholds.
+---
+
+## Strength buckets
+
+`core/patterns/scoring.py::strength()`:
+```text
+strong  if score > 70
+medium  if 40 <= score <= 70
+weak    otherwise
+```
+Given the base+modifier scores from the [pattern algorithms](/docs/statistical/patterns)
+page (55, 50, 60, 70), most single detections land as **medium**; only
+Breakout20/55 (score 70 is the boundary — `score > 70` is required, so a plain
+70 is still *medium*, not strong, under this exact operator) or a pattern with
+extra modifiers would ever reach `strong` from base scoring alone.
+
+## Emit floor & cooldown — `core/patterns/cluster.py`
+
+1. **`emit_min` floor** (`CFG["emit_min"] = 30`): any detection scoring below 30 is
+   dropped entirely before strength is even assigned. In practice this rarely
+   trims anything since every base score is ≥ 50.
+2. **Cooldown dedup** (`CFG["cooldowns"]["bars"] = 4`): within each `pattern` group
+   independently, sorted by date, a hit is kept only if at least 4 calendar days
+   have passed since the last **kept** hit of that *same* pattern:
+   ```text
+   keep(hit) = (last_kept is None) OR (hit.date - last_kept.date).days >= 4
+   ```
+   This is a per-pattern debounce, not a global one — a `Hammer` and a
+   `BB_BuyDip` on the same day are both kept even though they're within 4 days of
+   each other, because cooldown only compares hits of the *same* pattern.
+
+## Direction, alignment & qualification — `core/patterns/postprocess.py`
+
+**Alignment** compares a detection's `direction` (see the mapping table on the
+patterns page) against `regime_from()` (MA20 vs MA50) on that date:
+```text
+aligned       if (direction == bullish AND regime == uptrend)
+                 OR (direction == bearish AND regime == downtrend)
+counter-trend if direction != neutral AND not aligned
+neutral       if direction == neutral   (Doji only)
+```
+
+**Qualification** (`qualify_row()`) — the boolean that decides whether a
+detection makes it into the watchlist / downstream signal pipeline at all:
+```text
+reversal_ok = pattern in {Hammer, BullishEngulfing} AND alignment == counter-trend
+strong      = strength == "strong"
+med_aligned = strength == "medium" AND alignment == "aligned"
+
+vol_ok = True
+if pattern startswith Breakout/Breakdown:
+    vol_ok = vol_mult20 >= 1.2      # if vol_mult20 is available
+
+qualified = (strong OR med_aligned OR reversal_ok) AND vol_ok
+```
+Read this carefully: `Hammer`/`BullishEngulfing` are the **only** two patterns
+explicitly allowed to qualify as counter-trend reversal setups. Every other
+pattern needs either raw `strong` scoring or a `medium` score **plus** trend
+alignment. Breakout/Breakdown patterns additionally need same-day volume ≥1.2×
+the 20-day average, on top of the ≥1.5× surge already required to fire the
+pattern in the first place.
+
+## Context features — `compute_context_features()`
+
+Merged onto every detection row (used in qualification, gating, English
+descriptions, and chart annotations):
+```text
+vol_mult20        = volume / rolling_mean(volume, 20)
+off_52w_high_pct  = (close / rolling_max(close, 252, min_periods=1) - 1) * 100
+```
+(`rsi` and `atr` are carried straight through from `ind_df`.)
+
+## Second-pass gates — `core/rules/gates.py::apply_gates`
+
+This runs *after* qualification, as an independent re-check against live
+indicator arrays at each detection's own bar. Config-driven thresholds (from
+`cfg`, not `CFG`): `momentum.rsi_levels` (default `[40, 60]`), `breakout.vol_k`
+(default `1.5`), `gates.bb_touch_eps` (default `0.0`), `gates.pullback_ma_tol`
+(default `0.01`, i.e. 1%).
+
+| Pattern(s) | Gate condition |
+|---|---|
+| `Breakout20`, `Breakout55` | `MA20 > MA50` AND `volx20 >= vol_k` AND `close >= MA20` |
+| `Breakdown20`, `Breakdown55` | `MA20 < MA50` AND `volx20 >= vol_k` AND `close <= MA20` |
+| `BB_BuyDip` | `close <= BB_lower * (1 + bb_touch_eps)` AND `RSI <= rsi_low` AND `MA20 > MA50` |
+| `BB_SellFade` | `close >= BB_upper * (1 - bb_touch_eps)` AND `RSI >= rsi_high` AND `MA20 < MA50` |
+| `PullbackToMA20` | `MA20 > MA50` AND `close <= MA20 * (1 + pullback_ma_tol)` |
+| `Hammer`, `BullishEngulfing` | `MA20 > MA50` |
+| `BearishEngulfing` | `MA20 < MA50` |
+
+Any pattern in `cfg["disable_patterns"]` is dropped unconditionally regardless of
+the above (this is how the example run's `RSI_60_Down`/`RSI_40_Up` sidelining
+works — see the trade log in
+[Metrics & the audit step](/docs/statistical/metrics-audit)). Anything with a
+missing indicator input defaults its individual clause to `True` (fails open,
+not closed) — a gate never crashes on missing data, it just stops constraining
+that one condition.
+
+Note the redundancy with qualification by design: qualification's `aligned`
+check and the gate's `MA20 vs MA50` check are testing the same underlying
+regime signal twice, from two different code paths (`postprocess.py` vs.
+`gates.py`) — this is intentional defense-in-depth, not a bug, but it means a
+config change to trend logic must be applied in both places to take full effect.

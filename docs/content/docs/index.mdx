@@ -1,0 +1,42 @@
+---
+title: Overview
+description: What this pipeline does, end to end, before diving into the technical and statistical detail.
+---
+
+## What this is
+
+This is the documentation for the **ultrabull stock analysis pipeline** — a Python system that pulls OHLCV data for a single NSE/BSE-style ticker (e.g. `HINDCOPPER.NS`), computes technical indicators, detects rule-based chart patterns, scores and filters them, converts the survivors into executable trade signals, runs those signals through an event-driven backtest simulator, and produces a mix of Markdown summaries, an Excel workbook, and matplotlib/mplfinance charts.
+
+The entry point for a full run is `core/pipeline.py`. Running it end-to-end for one symbol looks like:
+
+```bash
+cd core
+../venv/bin/python pipeline.py
+```
+
+The example output referenced throughout these docs (trade log, metrics, and all four chart types) is from a real run against `HINDCOPPER.NS`.
+
+## How to read these docs
+
+<Cards>
+  <Card title="Technical" href="/docs/technical">
+    The frameworks in play (yfinance, vectorbt, matplotlib/mplfinance) and the exact
+    flow of data across pipeline stages — data → indicators → pattern detection →
+    enrichment → gates → signal compilation → simulation → audit → reporting/plots.
+    Also covers how to extend the system with new algorithms or indicators.
+  </Card>
+  <Card title="Statistical" href="/docs/statistical">
+    The actual math: indicator formulas and parameters, the exact boolean condition
+    behind every pattern, the scoring weights and strength thresholds, gate
+    thresholds, position sizing and SL/TP/trailing formulas, backtest metric
+    definitions, what the audit step verifies, and how to read each of the four
+    standard output charts.
+  </Card>
+</Cards>
+
+## Scope note
+
+This documentation covers the **stock analysis / backtesting pipeline** only
+(`core/`). It does not cover the Groww brokerage integration or the chainlit chat
+agent — those are a separate, currently read-only portfolio-P&L path unrelated to
+pattern detection or backtesting.

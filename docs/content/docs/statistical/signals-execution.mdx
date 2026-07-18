@@ -1,0 +1,103 @@
+---
+title: Signal Compilation & Execution
+description: Priority ordering, entry timing, position sizing, SL/TP/trailing math, and the cost model.
+---
+
+## Entry timing per pattern — `core/rules/signals.py`
+
+Every pattern gets an explicit `enter_at` (`"open"` or `"close"`) and
+`delay_bars` (how many bars after the signal bar to act):
+
+| Pattern(s) | Enter at | Delay |
+|---|---|---|
+| `Breakout20`, `Breakout55` | close | 0 bars (same bar, immediate) |
+| everything else (`BB_BuyDip`, `BB_SellFade`, `PullbackToMA20`, `Hammer`, `BullishEngulfing`, `BearishEngulfing`) | open | 1 bar (next bar's open) |
+
+Breakouts fire immediately at the triggering bar's close because a breakout *is*
+the continuation signal — waiting a bar would mean entering after the move
+already extended. Everything else waits for the next bar's open specifically to
+avoid look-ahead bias (a candle/mean-reversion pattern isn't "confirmed" until
+the bar that produced it has closed).
+
+## Priority ladder (same-bar conflict resolution)
+
+When `max_open_positions = 1` and multiple signals land on the same bar, only
+one can fill. Priority (lower number wins):
+
+```text
+0  Breakout55
+1  Breakout20
+2  Hammer
+3  BullishEngulfing / BearishEngulfing
+4  PullbackToMA20
+5  BB_BuyDip / BB_SellFade
+9  anything else (default)
+```
+
+Final signal ordering is `(bar_idx asc, priority asc, score desc, delay_bars asc)`
+— stable sort, so priority is the primary tiebreaker, score only matters between
+two signals of equal priority on the same bar.
+
+## Position sizing — `core/sim/engine.py::_size_shares`
+
+Default method is `risk.position_sizing = "atr"` (fixed-fractional / ATR risk
+parity):
+```text
+risk_cash  = equity * risk.max_risk_per_trade        # default 0.5% of equity
+stop_dist  = ATR[entry_bar] * sl_atr                 # the pattern's SL distance in price terms
+shares     = risk_cash / stop_dist
+```
+So position size scales **inversely** with how wide the pattern's stop is — a
+pattern configured with a tighter `sl_atr` gets a larger position for the same
+dollar risk, and vice versa. The alternative `"fixed_cash"` method
+(`cash / entry_price`) ignores volatility entirely and is not the default.
+
+## SL / TP / trailing stop math
+
+Computed once at entry from the pattern's `sl_atr`/`tp_atr`/`trail_atr` (from
+`cfg["patterns"][<tag>]`, falling back to `cfg["defaults"]`):
+```text
+long:  SL = entry - sl_atr * ATR[entry_bar]     TP = entry + tp_atr * ATR[entry_bar]
+short: SL = entry + sl_atr * ATR[entry_bar]     TP = entry - tp_atr * ATR[entry_bar]
+```
+
+**Trailing stop** (only if `trail_atr > 0`), recomputed every bar the position is
+open, using that bar's live ATR — a ratchet that only ever moves in the trade's
+favor:
+```text
+long:  trail_price = max(prior trail_price, close[t] - trail_atr * ATR[t])
+       effective_SL = max(original SL, trail_price)
+
+short: trail_price = min(prior trail_price, close[t] + trail_atr * ATR[t])
+       effective_SL = min(original SL, trail_price)
+```
+
+**Same-bar SL+TP conflict.** If a single bar's high/low range touches both the
+SL and TP level, the engine resolves it as **SL** — a deliberately conservative
+modeling assumption (worst case wins), not an attempt to guess intrabar path.
+
+**Time stop**: if `execution.max_hold_bars > 0` and a position has been open
+`>= max_hold_bars`, it's closed at that bar's close with `reason = "TIME"`.
+
+## Costs & slippage — `core/sim/engine.py`
+
+Applied on every fill (entry and exit), always **adverse** to the position:
+```text
+long entry / short exit :  price * (1 + slippage_bps/10000)
+long exit  / short entry:  price * (1 - slippage_bps/10000)
+```
+Fees per fill:
+```text
+fee = costs.per_trade + costs.per_share * shares + (costs.bps_fee/10000) * |price * shares|
+```
+All three cost knobs (`per_share`, `per_trade`, `bps_fee`) plus `slippage_bps`
+default to `0.0` unless set in `cfg["costs"]`. `pnl` on a closed trade already
+nets out entry + exit fees.
+
+## Mark-to-market equity (optional)
+
+If `equity.mtm = True`, the equity curve marks open positions to that bar's
+close with a small adverse haircut (`equity.mtm_haircut_bps`) rather than only
+reflecting realized P&L — this makes the equity curve (and therefore
+max-drawdown) reflect unrealized drawdown while a position is still open, not
+just booked losses.

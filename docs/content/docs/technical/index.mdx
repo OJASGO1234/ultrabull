@@ -1,0 +1,34 @@
+---
+title: Technical Overview
+description: The frameworks in play and the shape of the pipeline, before the stage-by-stage detail.
+---
+
+## Design summary
+
+`vectorbt` is used **only** as an indicator-calculation library (RSI, MACD, Bollinger
+Bands, moving averages, ATR). Everything downstream of that — pattern detection,
+scoring, gating, signal compilation, the backtest engine itself, metrics, and the
+audit step — is hand-written pandas/numpy code in `core/patterns/`, `core/rules/`,
+and `core/sim/`. This is **not** `vectorbt.Portfolio.from_signals()`; the simulator
+in `core/sim/engine.py` is a custom bar-by-bar event loop.
+
+## End-to-end flow
+
+```mermaid
+flowchart TD
+    A["yfinance\nload_data() / load_events()"] --> B["vectorbt indicators\ncompute_indicators()"]
+    B --> C["vbt_to_pd_ind.py\nbuild_ind_df_from_vbt()\nextract_symbol_df()"]
+    C --> D["patterns/pipeline.py\nrun_all_patterns()"]
+    D --> E["patterns/postprocess.py\nenrich_detections()"]
+    E --> F["rules/gates.py\napply_gates()"]
+    F --> G["rules/signals.py\ncompile_signals()"]
+    G --> H["sim/engine.py\nsimulate()"]
+    H --> I["sim/metrics.py\nsummarize() / by_tag() / audit_exits()"]
+    I --> J["sim/report.py + patterns/explain.py\nMarkdown + Excel reports"]
+    H --> K["patterns/viz.py + sim/viz.py\nmatplotlib / mplfinance charts"]
+```
+
+Each arrow is a concrete Python call in `core/pipeline.py`'s `__main__` block — that
+file **is** the reference wiring for the whole pipeline. The next page walks each
+box in detail; [Extending the pipeline](/docs/technical/extending) covers how to
+add new algorithms without breaking this chain.

@@ -1,0 +1,29 @@
+---
+title: Frameworks & Layers
+description: What library or custom module owns each part of the pipeline.
+---
+
+## Layer-by-layer
+
+| Layer | Framework / module | What it owns |
+|---|---|---|
+| Data acquisition | `yfinance` via `core/stock_explorer.py` (`load_data`, `load_events`) | Live OHLCV download + dividends/splits/earnings dates. No caching, no DB — every run re-downloads. |
+| Indicator computation | `vectorbt` via `core/stock_explorer.py::compute_indicators` | RSI, MACD, Bollinger Bands, MA20/MA50, ATR — vectorbt's indicator factories only, not its backtesting API. |
+| Indicator reshaping | `core/vbt_to_pd_ind.py` | Converts vectorbt's indicator objects (which can be per-symbol `Series` or 1-column `DataFrame`s) into one flat `ind_df` with canonical columns: `RSI, MA20, MA50, MACD, MACD_signal, ATR, BB_upper, BB_lower`. Also normalizes raw OHLCV (`extract_symbol_df`) regardless of whether yfinance returned a flat or `MultiIndex` column frame. |
+| Pattern detection | `core/patterns/{candles,breakouts,pullbacks,momentum}.py`, orchestrated by `core/patterns/pipeline.py::run_all_patterns` | Pure vectorized pandas boolean-mask rules per pattern family. 100% custom — no ML, no vectorbt signal generators. |
+| Deduplication / gating (pass 1) | `core/patterns/cluster.py` | Per-pattern cooldown (drop repeat hits within N bars) + `emit_min` score floor. |
+| Enrichment | `core/patterns/postprocess.py` | Adds `direction`, `alignment` (vs. regime), context features (`rsi`, `atr`, `vol_mult20`, `off_52w_high_pct`), a plain-English one-liner, and the `qualified` boolean used everywhere downstream. |
+| Gating (pass 2) | `core/rules/gates.py::apply_gates` | Re-validates each *qualified* detection against live indicator values at its own bar index — trend direction, volume surge, band touch, RSI extremity, MA proximity — independently of the qualification logic in postprocess.py. |
+| Signal compilation | `core/rules/signals.py::compile_signals` | Converts surviving detections into `Signal` objects: side, SL/TP/trail (in ATR multiples), entry timing (`enter_at`/`delay_bars`), and a priority for same-bar conflicts. |
+| Backtest simulation | `core/sim/engine.py::simulate` | Custom bar-by-bar event loop: position sizing, SL/TP/trailing exits, slippage, fees, mark-to-market equity. |
+| Metrics & audit | `core/sim/metrics.py` | `summarize()` (portfolio metrics), `by_tag()` (per-pattern breakdown), `audit_exits()` (the audit step — see [Pipeline stages](/docs/technical/stages)). |
+| Reporting | `core/sim/report.py`, `core/patterns/explain.py` | Excel workbook (`export_backtest_excel`) and Markdown summaries (`summarize_to_md`, `daily_summary_md`, `recent_summary_md`). |
+| Visualization | `matplotlib` + `mplfinance`, with `core/patterns/viz.py` and `core/sim/viz.py` | Candles+MA+BBands, RSI, MACD, and the trade/signal overlay chart — see [Interpreting the charts](/docs/statistical/reading-charts). |
+| Preset tuning | `core/sim/tune.py::try_presets` | Re-runs `compile_signals` → `simulate` → `summarize` under several config overrides (tighter TP, wider SL, extra cooldown, etc.) and ranks them by profit factor. |
+
+## What's deliberately *not* here
+
+Everything above operates on `yfinance` price history only. The Groww API
+integration (`groww/`) and the chainlit chat agent (`agent.py`) are a separate,
+currently read-only portfolio-holdings path — they do not feed into or consume
+anything in this pipeline, and are out of scope for this documentation.

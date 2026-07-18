@@ -1,0 +1,110 @@
+---
+title: Pipeline Stages
+description: Function-by-function walkthrough of core/pipeline.py's __main__ flow.
+---
+
+This walks the exact call sequence in `core/pipeline.py`, stage by stage. Each
+stage's *math* is covered in the [Statistical](/docs/statistical) section — this
+page is about inputs, outputs, and where each function lives.
+
+## 1. Data acquisition
+
+- `analyze_symbol(symbol, years)` → `load_data(symbol, years)` in `core/stock_explorer.py`
+  downloads OHLCV via `yf.download(symbol, start, end, auto_adjust=True)`, lower-cases
+  columns, strips timezone.
+- `load_events(symbol, df)` separately pulls dividends/splits/earnings via `yf.Ticker`.
+- Output: raw OHLCV `df` (possibly `MultiIndex` columns if yfinance returned a
+  multi-field frame), plus an `events` DataFrame.
+
+## 2. Indicator computation
+
+- `compute_indicators(df)` runs `vbt.RSI`, `vbt.MACD`, `vbt.BBANDS`, `vbt.MA` (×2),
+  `vbt.ATR` and returns a dict of vectorbt indicator objects (not a flat DataFrame yet).
+- `extract_symbol_df(df, symbol, case="title")` (in `core/vbt_to_pd_ind.py`) slices a
+  single symbol out of any `MultiIndex` shape and returns canonical
+  `['Open','High','Low','Close','Volume']`.
+- `build_ind_df_from_vbt(df_ohlcv, ind)` flattens the vectorbt indicator dict into one
+  `ind_df` DataFrame indexed like `df_ohlcv`, with columns
+  `RSI, MA20, MA50, MACD, MACD_signal, ATR, BB_upper, BB_lower`.
+
+## 3. Pattern detection
+
+- `run_all_patterns(df_ohlcv, ind_df, CFG)` in `core/patterns/pipeline.py`:
+  1. Computes `_regime` (uptrend/downtrend/neutral from MA20 vs MA50) and attaches `Close` to `ind` for MACD normalization.
+  2. Calls each family detector (`candles.engulfing`, `candles.hammer_doji`,
+     `breakouts.breakouts`, `pullbacks.pullback_ma20`, `pullbacks.bb_reversion`,
+     `momentum.rsi_regime_cross`, `momentum.macd_cross_near_zero`), each returning a
+     DataFrame with columns `date, pattern, score, strength, regime, notes, params`.
+  3. Concatenates all non-empty frames, sorts by `(date, pattern)`.
+  4. `cluster.apply_cooldown(dets, bars=CFG["cooldowns"]["bars"])` drops repeat hits
+     of the same pattern within a cooldown window.
+  5. `cluster.add_strength_and_gate(dets, emit_min=CFG["emit_min"])` assigns a
+     strength label and drops anything below the score floor.
+- Output: `detections` DataFrame — one row per (date, pattern) hit that survived
+  cooldown + the score floor.
+
+## 4. Enrichment
+
+- `enrich_detections(dets, df_ohlcv, ind_df, symbol)` in `core/patterns/postprocess.py`
+  chains: `add_direction_alignment` → `compute_context_features` +
+  `merge_features` → `add_english` → `add_qualification`.
+- Output: `detections_enriched` — adds `direction`, `alignment`, `rsi`, `atr`,
+  `vol_mult20`, `off_52w_high_pct`, `english`, `qualified`.
+- `warmup_cutoff(ind_df)` gives the earliest date where all indicators are valid;
+  `core/pipeline.py` filters `detections_enriched` to `date >= cut` before anything
+  downstream sees it.
+
+## 5. Gating (second pass)
+
+- `apply_gates(detections_enriched, df_ohlcv, ind_df, cfg)` in `core/rules/gates.py`
+  maps each detection to an integer `bar_idx`, then re-checks pattern-specific
+  boolean conditions directly against `ind_df`/`df_ohlcv` arrays at that bar
+  (independent of the `qualified` flag from stage 4). Also drops anything in
+  `cfg["disable_patterns"]`.
+- Output: a filtered copy of `detections_enriched`.
+
+## 6. Signal compilation
+
+- `compile_signals(det_gated, df_ohlcv, ind_df, cfg)` in `core/rules/signals.py`
+  filters to `qualified` rows past `filters.warmup_cutoff_bars` and
+  `filters.min_atr`, applies a local `execution.cooldown_bars` gap, then builds one
+  `Signal` per surviving row: `side`, `sl_atr`, `tp_atr`, `trail_atr` (from
+  `cfg["patterns"][<tag>]` or `cfg["defaults"]`), `enter_at`/`delay_bars` (pattern
+  execution-timing overrides), and `priority` (tie-break ladder).
+- Output: `signals` DataFrame, sorted by `(bar_idx, priority, score desc, delay_bars)`.
+
+## 7. Backtest simulation
+
+- `simulate(df_ohlcv, signals, ind_df, cfg)` in `core/sim/engine.py` is a single
+  `for t in range(len(close))` loop that, per bar: (1) checks every open position for
+  SL/TP/trailing-stop/time-stop exits, (2) opens new positions from that bar's
+  signals (subject to `max_open_positions` and cooldown), (3) marks equity, and
+  optionally (4) marks open positions to market if `equity.mtm` is on.
+- Output: `trades` (one row per closed trade), `equity` (a full daily curve), `fills`
+  (every entry/exit tick, used for chart overlays).
+
+## 8. Metrics & audit
+
+- `summarize(trades, equity)` in `core/sim/metrics.py` computes portfolio-level
+  stats (win rate, profit factor, expectancy, drawdown, Sharpe).
+- `by_tag(trades)` breaks the same stats down per pattern tag.
+- `audit_exits(trades, cfg)` is a **correctness check on the simulator itself, not a
+  strategy metric**: for every trade that exited on `"SL"` or `"TP"`, it recomputes
+  the theoretical exit price (SL/TP level adjusted for the configured slippage
+  direction) and flags any trade whose recorded `exit_price` doesn't match within
+  tolerance. It returns *only the mismatching rows* — an empty DataFrame means the
+  engine's own fills are internally consistent with its own SL/TP model. See
+  [Metrics & the audit step](/docs/statistical/metrics-audit) for the exact formula.
+
+## 9. Reporting & visualization
+
+- `sim/report.py::summarize_to_md` / `export_backtest_excel` turn the metrics +
+  trades into a Markdown summary and an Excel workbook (`Trades`, `Equity`,
+  `DailyPnL`, `ByPattern`, `Signals`, `Config` sheets).
+- `patterns/explain.py::daily_summary_md` / `recent_summary_md` turn
+  `detections_enriched` into human-readable per-day/per-week Markdown snapshots.
+- `patterns/viz.py::overlay_patterns` / `make_signal_addplots` and
+  `sim/viz.py::overlay_trades` / `overlay_fills` / `overlay_signals_rail` draw on top
+  of an `mplfinance` candlestick chart. `stock_explorer.py::plot_candles` /
+  `plot_momentum` draw the three exploratory charts (Candles+MA+BBands, RSI, MACD)
+  used earlier in `analyze_symbol`.

@@ -1,0 +1,26 @@
+---
+title: Statistical Overview
+description: How to navigate the math behind indicators, patterns, scoring, execution, and metrics.
+---
+
+This section is the exact math and thresholds behind every stage described in
+[Technical](/docs/technical). Read it in order if you're new to the pipeline:
+
+1. [Indicators & regime](/docs/statistical/indicators) — the five indicators
+   computed and how "uptrend/downtrend/neutral" is decided.
+2. [Pattern algorithms](/docs/statistical/patterns) — the exact boolean condition
+   behind every one of the 11 pattern types.
+3. [Scoring & gates](/docs/statistical/scoring-gates) — base weights, strength
+   thresholds, cooldown/dedup logic, qualification rule, and the second-pass gate
+   thresholds.
+4. [Signal compilation & execution](/docs/statistical/signals-execution) — priority
+   ordering, entry timing, position sizing, and SL/TP/trailing formulas.
+5. [Metrics & the audit step](/docs/statistical/metrics-audit) — every backtest
+   metric formula, and exactly what `audit_exits()` checks.
+6. [Interpreting the charts](/docs/statistical/reading-charts) — how to read each
+   of the four standard output charts, using a real `HINDCOPPER.NS` run.
+
+All parameter values quoted below are the pipeline's current defaults, as set in
+`core/patterns/config.py` (`CFG`) and the `cfg` dict in `core/pipeline.py`'s
+`__main__` block. Every one is a config knob — see
+[Extending the pipeline](/docs/technical/extending) to change them.

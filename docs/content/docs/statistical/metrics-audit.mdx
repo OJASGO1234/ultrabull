@@ -1,0 +1,91 @@
+---
+title: Metrics & the Audit Step
+description: Every backtest metric formula, worked from a real run, and exactly what audit_exits() checks.
+---
+
+All formulas below are from `core/sim/metrics.py`, worked against a real
+`HINDCOPPER.NS` backtest run (6 closed trades) so the numbers below are the
+actual reported output, not illustrative placeholders.
+
+## Portfolio metrics — `summarize(trades, equity)`
+
+```text
+win_rate     = mean(pnl > 0)                                    # 2/6 = 0.3333
+avg_win      = mean(pnl | pnl > 0)                               # 5,391.17
+avg_loss     = mean(pnl | pnl <= 0)                              # -2,951.39
+gross_profit = sum(pnl | pnl > 0)
+gross_loss   = -sum(pnl | pnl <= 0)
+profit_factor = gross_profit / gross_loss   (= inf if gross_loss == 0)   # 0.913
+expectancy   = mean(pnl)  over all trades                        # -170.53 ₹/trade
+median_hold_bars = median(exit_bar - entry_bar)                  # 4.0 bars
+
+return_total = equity[-1] / equity[0] - 1                        # -0.10%
+max_drawdown = min(equity / cummax(equity) - 1)                  # -1.52%
+sharpe_daily = mean(daily_returns) / (std(daily_returns) + 1e-12) * sqrt(252)   # -0.097
+```
+
+**Reading the worked example**: a profit factor of 0.913 (< 1) and negative
+expectancy mean this exact config lost money over the test window despite one
+outsized winning trade (`Hammer`, +9,948) — the other five trades were all
+losers or small winners, which `by_tag()` breaks out per pattern below.
+
+<Callout title="Sharpe caveat" type="info">
+`sharpe_daily` annualizes with `sqrt(252)` regardless of the actual bar
+frequency of `equity` — it's only a true *daily* Sharpe if `df_ohlcv` is daily
+bars (which it is, by default, from `yfinance`). If you ever backtest on a
+different bar frequency, this annualization factor would need to change to
+match.
+</Callout>
+
+## Per-pattern breakdown — `by_tag(trades)`
+
+Groups the same `pnl`/`win`/`profit_factor` formulas above by `tag`
+(pattern name). From the same run:
+
+| tag | trades | win_rate | total_pnl | avg_pnl | profit_factor |
+|---|---|---|---|---|---|
+| Hammer | 1 | 100% | 9,947.72 | 9,947.72 | inf |
+| BB_SellFade | 1 | 0% | -659.53 | -659.53 | 0.00 |
+| BB_BuyDip | 1 | 0% | -1,843.62 | -1,843.62 | 0.00 |
+| PullbackToMA20 | 2 | 50% | -3,390.41 | -1,695.20 | 0.20 |
+| BearishEngulfing | 1 | 0% | -5,077.37 | -5,077.37 | 0.00 |
+
+A single-trade sample per pattern here means none of these per-pattern
+`profit_factor`/`win_rate` figures are statistically meaningful yet — this table
+is diagnostic (which patterns to watch as more trades accumulate), not a basis
+for disabling a pattern after one observation.
+
+## The audit step — `audit_exits(trades, cfg)`
+
+This is **not a strategy-quality metric** — it is a correctness check on the
+simulator's own fill logic, run immediately after `summarize()`/`by_tag()` and
+before reporting. For every trade whose `reason` is `"SL"` or `"TP"` (trades
+closed by `"TIME"` are skipped — there's no theoretical level to check them
+against):
+
+```text
+slip_mult = slippage_bps / 10000              # from cfg["costs"]["slippage_bps"], 0 if unset
+
+if reason == "SL":
+    ref = sl_price_exit if available else sl_price
+    ref_slip = ref * (1 - slip_mult) if side == "long" else ref * (1 + slip_mult)
+else:  # TP
+    ref = tp_price_exit if available else tp_price
+    ref_slip = ref * (1 + slip_mult) if side == "long" else ref * (1 - slip_mult)
+
+tolerance    = max(1e-3, |ref_slip| * 5e-4)     # absolute floor OR 0.05% relative, whichever is larger
+mismatch     = |exit_price - ref_slip| > tolerance
+```
+
+It returns **only the mismatching rows**. In the worked example,
+`audit_exits()` returned an **empty DataFrame** — every one of the 6 trades'
+recorded `exit_price` matched its theoretical SL/TP level (adjusted for the
+2.0 bps slippage configured that run) within tolerance. That's the pass
+condition: an empty audit result means you can trust the simulator's fills are
+internally self-consistent with its own SL/TP/slippage model — it says nothing
+about whether the SL/TP levels themselves were a *good* trading rule, only that
+the code executed its own rule correctly.
+
+If a mismatch is ever flagged (a non-empty result), treat it as a simulator bug
+to fix before trusting any metric from that run — it means a trade's exit price
+disagrees with what the SL/TP/slippage config says it should have been.

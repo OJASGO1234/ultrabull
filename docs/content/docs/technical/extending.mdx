@@ -1,0 +1,81 @@
+---
+title: Extending the Pipeline
+description: How to add new pattern algorithms, indicators, gates, or backtest presets without breaking the chain.
+---
+
+## Adding a new pattern algorithm
+
+1. **Write the detector.** Add a function in the relevant `core/patterns/*.py`
+   module (or a new module) that takes `(df, ind, ...params)` and returns a
+   DataFrame with exactly these columns: `date, pattern, score, strength, regime,
+   notes, params`. Follow the existing `_EMPTY` fallback convention (return an
+   empty frame with those columns when no bars match) so downstream `pd.concat`
+   calls don't break on an all-empty run.
+2. **Pick a base score.** Either reuse an existing family weight via
+   `scoring.base("candles"|"breakout"|"pullback"|"momentum")`, or add a new family
+   key to the dict in `core/patterns/scoring.py::base`. Add a small `+N` modifier on
+   top the way every existing detector does.
+3. **Register it.** Add a call to your function inside
+   `core/patterns/pipeline.py::run_all_patterns`, appending its output to `frames`.
+4. **Map its direction.** If the pattern is directional, add it to
+   `direction_of()` in `core/patterns/postprocess.py` (bullish/bearish sets), so
+   `alignment` (vs. regime) and the qualification rule work correctly.
+5. **Qualification.** By default a pattern qualifies if `strength == "strong"` or
+   (`medium` and `aligned`). If your pattern should qualify as a counter-trend
+   reversal (like `Hammer`/`BullishEngulfing`), add it to the `reversal_ok` set in
+   `qualify_row()` in `postprocess.py`.
+6. **Gate it (optional but recommended).** Add a pattern-specific boolean clause in
+   `core/rules/gates.py::apply_gates` if the pattern needs extra live-indicator
+   validation beyond the qualification flag (see how `Breakout20/55`, `BB_BuyDip`,
+   `PullbackToMA20`, etc. each get their own clause).
+7. **Execution defaults.** Add default `sl_atr`/`tp_atr`/`trail_atr` under
+   `cfg["patterns"]["<YourPattern>"]` in `core/pipeline.py` (falls back to
+   `cfg["defaults"]` if omitted). If it needs non-default entry timing, add an
+   entry in `enter_overrides` and `priority` inside
+   `core/rules/signals.py::compile_signals`.
+8. **Family bucket for reporting.** If you want it grouped correctly in
+   `summarize_signals`/`daily_summary_md`, add a case to `family_of()`
+   (`postprocess.py` and `explain.py` each have their own copy — keep them in sync).
+
+## Adding a new indicator
+
+1. Compute it with vectorbt (or any other library) in
+   `core/stock_explorer.py::compute_indicators`, returning it in the `ind` dict.
+2. Flatten it into a canonical column in
+   `core/vbt_to_pd_ind.py::build_ind_df_from_vbt` — follow the existing
+   try-several-attribute-names pattern (vectorbt's return shape varies by indicator).
+3. Once it's a column in `ind_df`, any pattern/gate function can read it directly
+   (e.g. `ind["ATR"]`, `ind_df["RSI"]`).
+
+## Adjusting scoring / filtering aggressiveness
+
+- **Base weights & strength buckets**: `core/patterns/scoring.py` (`base()`,
+  `strength()`).
+- **Emit floor & cooldown**: `CFG["emit_min"]` and `CFG["cooldowns"]["bars"]` in
+  `core/patterns/config.py`, applied in `cluster.py`.
+- **Gate thresholds** (volume-surge multiple, RSI levels, BB touch slack, MA
+  tolerance): `CFG["breakout"]["vol_k"]`, `CFG["momentum"]["rsi_levels"]`,
+  `cfg["gates"]["bb_touch_eps"]`, `cfg["gates"]["pullback_ma_tol"]` — read in
+  `core/rules/gates.py`.
+
+## Adjusting execution / backtest behavior
+
+- Per-pattern SL/TP/trailing distances and entry timing: `cfg["patterns"]` and
+  `enter_overrides`/`priority` in `core/rules/signals.py`.
+- Position sizing method, risk-per-trade, costs, max open positions, cooldown,
+  time-stop: `cfg["risk"]`, `cfg["costs"]`, `cfg["execution"]` — all read inside
+  `core/sim/engine.py::simulate`.
+
+## Adding a new backtest preset
+
+Add a branch to `_preset_overrides()` in `core/sim/tune.py` returning a partial
+config override, and add its name to the `names` list passed to `try_presets()`
+(or to the default list). Each preset gets its own
+`compile_signals → simulate → summarize` pass and is ranked by profit factor, then
+return.
+
+## Regression-testing config changes
+
+`core/tests/golden_tests.py` exists specifically to catch config or algorithm
+changes that silently blow up signal density or backtest behavior — run it after
+any change to `core/patterns/config.py`, gate thresholds, or detector logic.
