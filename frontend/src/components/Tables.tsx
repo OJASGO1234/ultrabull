@@ -1,6 +1,81 @@
-import type { ByPatternRow, Detection, SignalRow, Trade } from '../types'
+import type { ByPatternRow, Detection, EventRow, Level, SignalRow, Trade } from '../types'
 import type { Theme } from '../theme'
 import { fmt } from './chart'
+import { patternInfo } from '../patternInfo'
+
+export function LevelsTable({ levels, theme: t }: { levels: Level[]; theme: Theme }) {
+  if (!levels.length) return <p className="empty">No swing levels detected near the current price.</p>
+  const rows = [...levels].sort((a, b) => b.price - a.price)
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Level ₹</th>
+            <th>Type</th>
+            <th className="num">Distance</th>
+            <th className="num">Touches</th>
+            <th className="num">Strength</th>
+            <th>Last tested</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((lv, i) => (
+            <tr key={i}>
+              <td className="num">{fmt.price(lv.price)}</td>
+              <td style={{ color: lv.kind === 'support' ? t.deltaUpText : t.deltaDownText }}>
+                {lv.kind}
+              </td>
+              <td className="num">
+                {lv.distance_pct == null ? '—' : `${lv.distance_pct > 0 ? '+' : ''}${lv.distance_pct.toFixed(1)}%`}
+              </td>
+              <td className="num">{lv.touches}</td>
+              <td className="num">{lv.strength == null ? '—' : `${fmt.int(lv.strength)}/100`}</td>
+              <td>{lv.last_touch}</td>
+              <td>{lv.source === '52w' ? '52-week extreme' : 'swing cluster'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const EVENT_NAMES: Record<string, string> = {
+  EARNINGS: 'Results announced',
+  DIVIDEND: 'Dividend (ex-date)',
+  SPLIT: 'Split / bonus',
+}
+
+export function EventsTable({ events }: { events: EventRow[] }) {
+  if (!events.length) {
+    return <p className="empty">No corporate events (earnings / dividends / splits) in this window.</p>
+  }
+  const recent = [...events].reverse()
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Event</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recent.map((ev, i) => (
+            <tr key={i}>
+              <td>{ev.date}</td>
+              <td>{EVENT_NAMES[ev.type] ?? ev.type}</td>
+              <td>{ev.label}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 const pnlStyle = (t: Theme, v: number | null) =>
   v == null ? undefined : { color: v >= 0 ? t.deltaUpText : t.deltaDownText }
@@ -85,9 +160,10 @@ export function SignalsTable({ signals }: { signals: SignalRow[] }) {
             <th>Date</th>
             <th>Pattern</th>
             <th>Side</th>
-            <th className="num">Score</th>
             <th>Enter at</th>
-            <th className="num">Delay</th>
+            <th className="num">Ref ₹</th>
+            <th className="num">Stop ₹</th>
+            <th className="num">Target ₹</th>
             <th className="num">SL ×ATR</th>
             <th className="num">TP ×ATR</th>
             <th className="num">Trail ×ATR</th>
@@ -97,11 +173,12 @@ export function SignalsTable({ signals }: { signals: SignalRow[] }) {
           {signals.map((s, i) => (
             <tr key={i}>
               <td>{s.date ?? '—'}</td>
-              <td>{s.tag}</td>
+              <td title={patternInfo(s.tag).meaning}>{s.tag}</td>
               <td>{s.side}</td>
-              <td className="num">{fmt.int(s.score)}</td>
-              <td>{s.enter_at ?? '—'}</td>
-              <td className="num">{fmt.int(s.delay_bars)}</td>
+              <td>{s.enter_at ?? '—'}{s.delay_bars ? ` +${fmt.int(s.delay_bars)}bar` : ''}</td>
+              <td className="num">{fmt.price(s.ref_close)}</td>
+              <td className="num">{fmt.price(s.sl_est)}</td>
+              <td className="num">{fmt.price(s.tp_est)}</td>
               <td className="num">{fmt.price(s.sl_atr, 1)}</td>
               <td className="num">{fmt.price(s.tp_atr, 1)}</td>
               <td className="num">{fmt.price(s.trail_atr, 1)}</td>
@@ -113,20 +190,48 @@ export function SignalsTable({ signals }: { signals: SignalRow[] }) {
   )
 }
 
+function detectionPlan(d: Detection): string | null {
+  if (d.ref_close == null || d.sl_est == null || d.tp_est == null) return null
+  const long = d.side !== 'short'
+  const slPct = Math.abs(d.sl_est / d.ref_close - 1) * 100
+  const tpPct = Math.abs(d.tp_est / d.ref_close - 1) * 100
+  const rr = slPct > 0 ? (tpPct / slPct).toFixed(1) : '—'
+  return (
+    `Plan if acting: ${long ? 'buy' : 'sell short'} near ₹${fmt.price(d.ref_close)}; ` +
+    `stop ₹${fmt.price(d.sl_est)} (${long ? '−' : '+'}${slPct.toFixed(1)}%, beyond one normal ` +
+    `swing so routine noise doesn't stop you out); target ₹${fmt.price(d.tp_est)} ` +
+    `(${long ? '+' : '−'}${tpPct.toFixed(1)}%, ${rr}:1 reward-to-risk).`
+  )
+}
+
 export function DetectionsList({ detections }: { detections: Detection[] }) {
   const qualified = detections.filter((d) => d.qualified)
   const recent = qualified.slice(-10).reverse()
   if (!recent.length) return <p className="empty">No qualified detections in this window.</p>
   return (
     <ul className="detections">
-      {recent.map((d, i) => (
-        <li key={i}>
-          <span className={`dir-badge dir-${d.direction ?? 'neutral'}`}>
-            {d.direction === 'bullish' ? '↑' : d.direction === 'bearish' ? '↓' : '·'}
-          </span>
-          <span className="detection-text">{d.english ?? `${d.date} — ${d.pattern}`}</span>
-        </li>
-      ))}
+      {recent.map((d, i) => {
+        const info = patternInfo(d.pattern)
+        const plan = detectionPlan(d)
+        return (
+          <li key={i}>
+            <span className={`dir-badge dir-${d.direction ?? 'neutral'}`}>
+              {d.direction === 'bullish' ? '↑' : d.direction === 'bearish' ? '↓' : '·'}
+            </span>
+            <span className="detection-text">
+              <b>{d.date} — {d.pattern}</b> ({d.direction}, {d.alignment})
+              <br />
+              {info.meaning} {info.implication}
+              {plan && (
+                <>
+                  <br />
+                  {plan}
+                </>
+              )}
+            </span>
+          </li>
+        )
+      })}
     </ul>
   )
 }

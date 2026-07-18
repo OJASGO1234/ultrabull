@@ -1,12 +1,11 @@
 # patterns/pipeline.py
 import pandas as pd
-from . import candles, breakouts, pullbacks, momentum, cluster
+from . import candles, breakouts, pullbacks, momentum, cluster, vcp
 from .primitives import regime_from
 
 def run_all_patterns(df: pd.DataFrame, ind: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     ind = ind.copy()
     ind["_regime"] = regime_from(ind)
-    print(ind.head())
     ind["Close"] = df["Close"]  # used for MACD normalization
 
     frames = []
@@ -19,6 +18,7 @@ def run_all_patterns(df: pd.DataFrame, ind: pd.DataFrame, cfg: dict) -> pd.DataF
                     vol_k=cfg["breakout"]["vol_k"]))
     frames.append(pullbacks.pullback_ma20(df, ind, atr_tol_k=cfg["pullback"]["atr_tol_k"]))
     frames.append(pullbacks.bb_reversion(df, ind))
+    frames.append(vcp.vcp_setup(df, ind))
     frames.append(momentum.rsi_regime_cross(ind, *cfg["momentum"]["rsi_levels"]))
     frames.append(momentum.macd_cross_near_zero(ind, cfg["momentum"]["macd_zero_eps_atr_pct"]))
 
@@ -26,6 +26,6 @@ def run_all_patterns(df: pd.DataFrame, ind: pd.DataFrame, cfg: dict) -> pd.DataF
     if dets.empty: return dets
 
     dets = dets.sort_values(["date","pattern"]).reset_index(drop=True)
-    dets = cluster.apply_cooldown(dets, bars=cfg["cooldowns"]["bars"])
+    dets = cluster.apply_cooldown(dets, bars=cfg["cooldowns"]["bars"], index=df.index)
     dets = cluster.add_strength_and_gate(dets, emit_min=cfg["emit_min"])
     return dets

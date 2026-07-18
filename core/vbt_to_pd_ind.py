@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 # canonical mapping (case-insensitive)
@@ -24,6 +25,23 @@ def _pick_series_from_obj(obj, symbol=None):
         # fallback: first column
         return val.iloc[:, 0]
     return val
+
+def adx(df_ohlcv: pd.DataFrame, n: int = 14) -> pd.Series:
+    """Wilder's ADX — trend-strength (0-100), direction-agnostic."""
+    cols = {str(c).lower(): c for c in df_ohlcv.columns}
+    h = df_ohlcv[cols["high"]].astype(float)
+    l = df_ohlcv[cols["low"]].astype(float)
+    c = df_ohlcv[cols["close"]].astype(float)
+    up, dn = h.diff(), -l.diff()
+    plus_dm = ((up > dn) & (up > 0)) * up
+    minus_dm = ((dn > up) & (dn > 0)) * dn
+    tr = pd.concat([h - l, (h - c.shift()).abs(), (l - c.shift()).abs()], axis=1).max(axis=1)
+    atr_w = tr.ewm(alpha=1 / n, adjust=False).mean()
+    pdi = 100 * plus_dm.ewm(alpha=1 / n, adjust=False).mean() / atr_w
+    mdi = 100 * minus_dm.ewm(alpha=1 / n, adjust=False).mean() / atr_w
+    dx = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    return dx.ewm(alpha=1 / n, adjust=False).mean()
+
 
 def build_ind_df_from_vbt(df_ohlcv: pd.DataFrame, vbt_ind: dict, symbol: str | None = None) -> pd.DataFrame:
     """
@@ -71,6 +89,9 @@ def build_ind_df_from_vbt(df_ohlcv: pd.DataFrame, vbt_ind: dict, symbol: str | N
             if hasattr(bb_obj, cand):
                 out[target] = _pick_series_from_obj(getattr(bb_obj, cand), symbol)
                 break
+
+    # ADX (computed directly from OHLC; vectorbt has no built-in)
+    out["ADX"] = adx(df_ohlcv)
 
     # sanity
     required = ["RSI","MA20","MA50","MACD","MACD_signal","ATR","BB_upper","BB_lower"]

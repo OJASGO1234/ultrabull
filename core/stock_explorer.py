@@ -89,10 +89,13 @@ def to_series(x):
         return x.iloc[:, 0]
     return x  # already a Series
 
-def load_data(symbol: str, years: int = 1) -> pd.DataFrame:
-    """Download OHLCV data for a symbol from Yahoo Finance."""
-    end = datetime.now()
-    start = end - timedelta(days=365*years + 10)
+def load_data(symbol: str, years: float = 1, start=None, end=None) -> pd.DataFrame:
+    """Download OHLCV data for a symbol from Yahoo Finance.
+    Either pass `years` (window ending today) or explicit `start`/`end` dates."""
+    if end is None:
+        end = datetime.now()
+    if start is None:
+        start = end - timedelta(days=365 * years + 10)
     df = yf.download(symbol, start=start, end=end, auto_adjust=True, progress=False)
     if df.empty:
         raise ValueError(f"No data for {symbol}")
@@ -289,7 +292,9 @@ def load_events(symbol: str, ohlcv: pd.DataFrame) -> pd.DataFrame:
         ed = t.get_earnings_dates(limit=48)
         if ed is not None and len(ed) > 0:
             # DataFrame indexed by date (could be tz-aware); just coerce
-            ed_idx = pd.to_datetime(ed.index).tz_localize(None)
+            ed_idx = pd.to_datetime(ed.index)
+            if getattr(ed_idx, "tz", None) is not None:
+                ed_idx = ed_idx.tz_localize(None)
             for dt in ed_idx:
                 rows.append({"date": dt, "type": "EARNINGS", "label": "E"})
     except Exception as e:

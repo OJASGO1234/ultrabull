@@ -7,21 +7,32 @@ import numpy as np
 
 @dataclass
 class Signal:
-    """Atomic trading signal produced from a pattern detection."""
-    bar_idx: int              # integer bar index aligned to df_ohlcv
-    side: str                 # 'long' | 'short'
-    sl_atr: float             # stop distance in ATRs
-    tp_atr: float             # take-profit distance in ATRs
-    trail_atr: float = 0.0    # trailing distance in ATRs (0 = off)
-    tag: str = ""             # e.g., 'Breakout20'
-    size_cash: Optional[float] = None  # (engine computes shares from ATR risk)
+    bar_idx: int
+    side: str
+    sl_atr: float
+    tp_atr: float
+    trail_atr: float
+    tag: str
+    size_cash: Optional[float] = None
+    enter_at: str = "open"      # NEW
+    delay_bars: int = 1         # NEW
+    priority: int = 9           # NEW
     meta: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        d = asdict(self)
-        d["meta"] = d.get("meta", {})  # flatten for DataFrame
-        return d
-
+        return {
+            "bar_idx": self.bar_idx,
+            "side": self.side,
+            "sl_atr": self.sl_atr,
+            "tp_atr": self.tp_atr,
+            "trail_atr": self.trail_atr,
+            "tag": self.tag,
+            "size_cash": self.size_cash,
+            "enter_at": self.enter_at,         # NEW
+            "delay_bars": self.delay_bars,     # NEW
+            "priority": self.priority,         # NEW
+            "meta": self.meta,
+        }
 
 def _get(cfg: Dict[str, Any], path: str, default=None):
     """Small helper to read dotted keys from dicts."""
@@ -122,6 +133,39 @@ def compile_signals(
       DataFrame with columns:
         ['bar_idx','side','sl_atr','tp_atr','trail_atr','tag','size_cash','meta']
     """
+    # --- add near the top of compile_signals, before iterating rows ---
+    execution_defaults = {
+        "enter_at": str(cfg.get("execution", {}).get("enter_at", "open")).lower(),
+        "delay_bars": int(cfg.get("execution", {}).get("delay_bars", 1)),
+    }
+
+    # Breakouts should be immediate; others at next open by default
+    enter_overrides = {
+        "Breakout20": {"enter_at": "close", "delay_bars": 0},
+        "Breakout55": {"enter_at": "close", "delay_bars": 0},
+        # everything else inherits defaults unless you specify here
+        "BB_BuyDip": {"enter_at": "open", "delay_bars": 1},
+        "BB_SellFade": {"enter_at": "open", "delay_bars": 1},
+        "PullbackToMA20": {"enter_at": "open", "delay_bars": 1},
+        "Hammer": {"enter_at": "open", "delay_bars": 1},
+        "BullishEngulfing": {"enter_at": "open", "delay_bars": 1},
+        "BearishEngulfing": {"enter_at": "open", "delay_bars": 1},
+        # RSI tags are disabled in your cfg anyway
+    }
+
+    # Simple priority ladder (lower = earlier)
+    priority = {
+        "Breakout55": 0,
+        "Breakout20": 1,
+        "Hammer": 2,
+        "BullishEngulfing": 3,
+        "BearishEngulfing": 3,
+        "PullbackToMA20": 4,
+        "BB_BuyDip": 5,
+        "BB_SellFade": 5,
+    }
+
+
     if detections_enriched is None or len(detections_enriched) == 0:
         return pd.DataFrame(
             columns=["bar_idx", "side", "sl_atr", "tp_atr", "trail_atr", "tag", "size_cash", "meta"]
@@ -144,10 +188,20 @@ def compile_signals(
 
     # Local cooldown (engine also enforces; this keeps signals clean)
     cooldown = int(_get(cfg, "execution.cooldown_bars", 0) or 0)
-    det = det.sort_values("bar_idx").reset_index(drop=True)
+    # Sort by priority/score WITHIN each bar before applying the cooldown, so a
+    # low-priority signal can't consume the slot ahead of a better one
+    tag_src = det["tag"] if "tag" in det.columns else (det[pattern_col] if pattern_col in det.columns else None)
+    det = det.copy()
+    det["_prio"] = tag_src.map(priority).fillna(9).astype(int) if tag_src is not None else 9
+    sort_keys, sort_asc = ["bar_idx", "_prio"], [True, True]
+    if "score" in det.columns:
+        sort_keys.append("score"); sort_asc.append(False)
+    det = det.sort_values(sort_keys, ascending=sort_asc, kind="mergesort").reset_index(drop=True)
 
     out: List[Signal] = []
     last_emit = -10_000
+
+
 
     for row in det.itertuples(index=False):
         b = int(getattr(row, "bar_idx"))
@@ -160,13 +214,19 @@ def compile_signals(
         tag = getattr(row, "tag", None) if "tag" in det.columns else None
         tag = tag or (pattern or "")
 
+        ov = enter_overrides.get(tag, {})
+        delay_bars = int(ov.get("delay_bars", execution_defaults["delay_bars"]))
+        enter_at   = str(ov.get("enter_at",   execution_defaults["enter_at"])).lower()
+        prio       = int(priority.get(tag, 9))
+
         # Pull per-pattern overrides, then fall back to defaults
         p_cfg = (_get(cfg, f"patterns.{tag}", {}) or
                  _get(cfg, f"patterns.{pattern}", {}) or {})
 
         side = (
             p_cfg.get("side")
-            or {"up": "long", "down": "short", "bull": "long", "bear": "short"}.get(str(direction).lower())
+            or {"up": "long", "down": "short", "bull": "long", "bear": "short",
+                "bullish": "long", "bearish": "short"}.get(str(direction).lower())
             or "long"
         )
         sl_atr = float(p_cfg.get("sl_atr", _get(cfg, "defaults.sl_atr", 1.5)))
@@ -175,7 +235,7 @@ def compile_signals(
 
         # Pack any extra detection fields into meta (handy for debugging/analysis)
         fields = getattr(row, "_fields", [])
-        exclude = {"bar_idx", pattern_col, dir_col, qualified_col, "tag"}
+        exclude = {"bar_idx", pattern_col, dir_col, qualified_col, "tag", "_prio"}
         meta = {k: getattr(row, k) for k in fields if k not in exclude and hasattr(row, k)}
 
         out.append(
@@ -186,9 +246,28 @@ def compile_signals(
                 tp_atr=tp_atr,
                 trail_atr=trail_atr,
                 tag=tag or (pattern or side),
+                size_cash=None,
+                enter_at=enter_at,          # NEW
+                delay_bars=delay_bars,      # NEW
+                priority=prio,              # NEW
                 meta=meta or None,
             )
         )
         last_emit = b
 
-    return pd.DataFrame([s.to_dict() for s in out])
+    df = pd.DataFrame([s.to_dict() for s in out])
+    
+    # stable; prefer earlier bars, higher-priority tags, higher score, then faster entry
+    keys, asc = ["bar_idx", "priority"], [True, True]
+    if "score" in detections_enriched.columns:
+        sc = (
+            detections_enriched
+            .assign(tag=detections_enriched.get("tag", detections_enriched.get(pattern_col)))
+            .groupby(["bar_idx","tag"])["score"].max()
+        ).rename("score").reset_index()
+        df = df.merge(sc, on=["bar_idx","tag"], how="left")
+        keys += ["score"]; asc += [False]
+    keys += ["delay_bars"]; asc += [True]
+
+    df = df.sort_values(keys, ascending=asc, kind="mergesort").reset_index(drop=True)
+    return df

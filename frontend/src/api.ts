@@ -1,7 +1,20 @@
 import type { AnalysisResponse } from './types'
 
-export async function fetchAnalysis(symbol: string, years: number): Promise<AnalysisResponse> {
-  const res = await fetch(`/api/analyze/${encodeURIComponent(symbol)}?years=${years}`)
+export interface RangeQuery {
+  years?: number
+  start?: string // YYYY-MM-DD
+  end?: string // YYYY-MM-DD
+}
+
+export async function fetchAnalysis(symbol: string, range: RangeQuery): Promise<AnalysisResponse> {
+  const q = new URLSearchParams()
+  if (range.start) {
+    q.set('start', range.start)
+    if (range.end) q.set('end', range.end)
+  } else {
+    q.set('years', String(range.years ?? 0.5))
+  }
+  const res = await fetch(`/api/analyze/${encodeURIComponent(symbol)}?${q}`)
   if (!res.ok) {
     let detail = `Request failed (${res.status})`
     try {

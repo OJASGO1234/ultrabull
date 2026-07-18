@@ -49,6 +49,9 @@ export function EquityChart({ data, theme: t }: Props) {
         {hover != null && <span className="hover-readout">₹{fmt.int(hover)}</span>}
       </div>
       <div ref={ref} className="chart" />
+      {data.interpretations?.equity && (
+        <p className="chart-note chart-inference">{data.interpretations.equity}</p>
+      )}
     </div>
   )
 }

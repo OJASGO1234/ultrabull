@@ -29,8 +29,8 @@ def macd_cross_near_zero(ind, eps_atr_pct=0.25):
     macd, sig, atr, close = ind["MACD"], ind["MACD_signal"], ind["ATR"], ind["Close"]
     cross_up = (macd.shift(1) <= sig.shift(1)) & (macd > sig)
     cross_dn = (macd.shift(1) >= sig.shift(1)) & (macd < sig)
-    norm = (atr / close).replace([np.inf, -np.inf], np.nan).fillna(0.0)
-    near0 = macd.abs() <= (eps_atr_pct/100.0) * norm
+    # "near zero" measured in price units: |MACD| within eps_atr_pct fraction of ATR
+    near0 = macd.abs() <= eps_atr_pct * atr.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     base_score = base("momentum")
 
     up_hit = cross_up & near0

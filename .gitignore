@@ -7,3 +7,7 @@ __pycache__
 .env
 .md
 .csv
+**md
+.DS_Store
+.pyc
+data_cache/

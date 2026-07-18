@@ -63,6 +63,9 @@ export function MacdChart({ data, theme: t }: Props) {
         ]}
       />
       <div ref={ref} className="chart" />
+      {data.interpretations?.macd && (
+        <p className="chart-note chart-inference">{data.interpretations.macd}</p>
+      )}
     </div>
   )
 }

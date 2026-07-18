@@ -22,6 +22,10 @@ export interface Detection {
   alignment: string | null
   qualified: boolean
   english: string | null
+  side: string | null
+  ref_close: number | null
+  sl_est: number | null
+  tp_est: number | null
 }
 
 export interface SignalRow {
@@ -36,6 +40,9 @@ export interface SignalRow {
   sl_atr: number | null
   tp_atr: number | null
   trail_atr: number | null
+  ref_close: number | null
+  sl_est: number | null
+  tp_est: number | null
 }
 
 export interface Trade {
@@ -91,6 +98,141 @@ export interface SignalSummary {
   by_family?: Record<string, number>
 }
 
+export interface EventRow {
+  date: string
+  type: 'DIVIDEND' | 'SPLIT' | 'EARNINGS' | string
+  label: string
+}
+
+export interface EventRef {
+  date: string
+  label: string
+}
+
+/** Latest market/sector regime + relative-strength snapshot (drives the gates). */
+export interface MarketContext {
+  market_regime: 'uptrend' | 'downtrend' | 'neutral' | null
+  sector_regime: 'uptrend' | 'downtrend' | 'neutral' | null
+  sector: string | null
+  rs_20: number | null
+  rs_60: number | null
+  adx: number | null
+  breadth: number | null
+  dist_days: number | null
+}
+
+/** Forward-looking results-cycle / corporate-action timing. */
+export interface Timing {
+  next_earnings: string | null
+  trading_days_to_next_earnings: number | null
+  in_earnings_blackout: boolean
+  last_earnings: EventRef | null
+  days_since_last_earnings: number | null
+  results_overdue: boolean
+  earnings_data_stale: boolean
+  next_ex_dividend: string | null
+  last_dividend: EventRef | null
+  last_split: EventRef | null
+}
+
+export interface Level {
+  price: number
+  kind: 'support' | 'resistance'
+  touches: number
+  strength: number | null
+  last_touch: string
+  source: 'swings' | '52w' | string
+  distance_pct: number | null
+}
+
+export interface OutlookHorizon {
+  p_up: number | null
+  median_move: number | null
+  typical_range: [number | null, number | null]
+  n: number | null
+  verdict: 'up' | 'down' | 'sideways' | 'unknown'
+  fallback: boolean
+}
+
+export interface Outlook {
+  state: {
+    key: string
+    market: string
+    trend: string
+    rs: string
+    rsi_band: string
+    rsi: number
+  }
+  horizons: Record<'1d' | '1w' | '1m' | '3m', OutlookHorizon>
+  nearest_support: number | null
+  nearest_resistance: number | null
+  note: string
+}
+
+export interface AdviceFactor {
+  name: string
+  score: number
+  detail: string
+}
+
+export interface Advice {
+  as_of: string
+  close: number
+  score: number
+  fresh: { verdict: string; reason: string }
+  holding: { verdict: string; reason: string }
+  factors: AdviceFactor[]
+  plan: {
+    entry_zone_low: number | null
+    entry_zone_high: number | null
+    stop: number
+    stop_basis: string
+    target1: number
+    target2: number | null
+    reward_risk: number | null
+  }
+  note: string
+}
+
+export interface FyPoint {
+  fy: string
+  value_cr: number
+}
+
+export interface FundFlag {
+  level: 'good' | 'warn' | 'bad'
+  text: string
+}
+
+export interface Fundamentals {
+  available: boolean
+  snapshot: {
+    market_cap_cr: number | null
+    trailing_pe: number | null
+    price_to_book: number | null
+    debt_to_equity: number | null
+    dividend_yield_pct: number | null
+  }
+  annual: {
+    revenue?: FyPoint[]
+    net_income?: FyPoint[]
+    total_debt?: FyPoint[]
+    net_margin?: { fy: string; value_pct: number }[]
+  }
+  quarterly: {
+    revenue?: { quarter: string; value_cr: number; yoy_pct: number | null } | null
+    net_income?: { quarter: string; value_cr: number; yoy_pct: number | null } | null
+  }
+  flags: FundFlag[]
+  promoter: {
+    holding_pct: number | null
+    institutions_pct: number | null
+    pledge_pct: number | null
+    history: unknown[]
+    source_note: string
+  }
+}
+
 export interface AnalysisResponse {
   symbol: string
   years: number
@@ -107,7 +249,17 @@ export interface AnalysisResponse {
     macd: Point[]
     macd_signal: Point[]
     macd_hist: Point[]
+    adx: Point[]
   }
+  events: EventRow[]
+  context: MarketContext
+  timing: Timing
+  levels: Level[]
+  outlook: Outlook | null
+  advice: Advice | null
+  fundamentals: Fundamentals | null
+  interpretations: { rsi: string | null; macd: string | null; equity: string | null } | null
+  indexes: { name: string; points: Point[] }[]
   detections: Detection[]
   signals: SignalRow[]
   trades: Trade[]

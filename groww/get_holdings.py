@@ -2,8 +2,8 @@ from . import growwapi
 from langchain_core.tools import tool
 
 @tool
-def get_holdings_for_user(groww_symbol: str):
-    """Get portfolio details ).
+def get_holdings_for_user():
+    """Get the user's current portfolio/holdings.
     The response contains the following fields:
 
 Name	Type	Description

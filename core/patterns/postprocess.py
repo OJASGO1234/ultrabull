@@ -8,7 +8,7 @@ def direction_of(pattern: str) -> str:
     if pattern.startswith("Breakout"):   return "bullish"
     if pattern.startswith("Breakdown"):  return "bearish"
     if pattern in {"BB_BuyDip","PullbackToMA20","BullishEngulfing","Hammer",
-                   "RSI_40_Up","MACD_Cross_Zeroish_Up"}:
+                   "RSI_40_Up","MACD_Cross_Zeroish_Up","VCP_Setup"}:
         return "bullish"
     if pattern in {"BB_SellFade","BearishEngulfing","RSI_60_Down","MACD_Cross_Zeroish_Down"}:
         return "bearish"
@@ -49,6 +49,8 @@ def compute_context_features(
     feat = pd.DataFrame(index=df_ohlcv.index)
     feat["rsi"] = ind_df["RSI"]
     feat["atr"] = ind_df["ATR"]
+    if "ADX" in ind_df.columns:
+        feat["adx"] = ind_df["ADX"]
     feat[f"vol_mult{vol_lookback}"] = volume / volume.rolling(vol_lookback).mean()
     feat["off_52w_high_pct"] = (close / close.rolling(high_lookback, min_periods=1).max() - 1.0) * 100
     return feat
@@ -83,23 +85,81 @@ def add_english(dets: pd.DataFrame, symbol: str) -> pd.DataFrame:
     return d
 
 
+_REVERSAL_PATTERNS = {"Hammer", "BullishEngulfing"}
+
+
+def rescore(dets: pd.DataFrame) -> pd.DataFrame:
+    """
+    Rebuild 'score' from the family base plus evidence-based modifiers, so the
+    score actually ranks setups instead of being a per-family constant:
+      +10/+5  volume surge (>=2x / >=1.5x 20d average)
+      +10/-10 regime alignment (reversal patterns get +5 when counter-trend
+              instead of the penalty — that's their natural habitat)
+      +10/-5  relative strength vs sector agrees / disagrees with direction
+      +5      ADX agrees with the pattern family (trending for breakouts,
+              calm for mean-reversion)
+      +5      breakout within 5% of its 52-week high
+    Clipped to [0, 100]; 'strength' is recomputed from the new score.
+    """
+    from .scoring import base, strength
+
+    d = dets.copy()
+    fam = d["pattern"].map(family_of)
+    sc = fam.map(base).astype(float)
+
+    volx = pd.to_numeric(d.get("vol_mult20"), errors="coerce")
+    sc += np.select([volx >= 2.0, volx >= 1.5], [10.0, 5.0], default=0.0)
+
+    align = d.get("alignment", pd.Series("neutral", index=d.index)).astype(str)
+    is_rev = d["pattern"].isin(_REVERSAL_PATTERNS)
+    sc += np.select(
+        [align.eq("aligned"), align.eq("counter-trend") & is_rev, align.eq("counter-trend")],
+        [10.0, 5.0, -10.0], default=0.0)
+
+    if "rs_20" in d.columns:
+        rs = pd.to_numeric(d["rs_20"], errors="coerce")
+        direction = d.get("direction", pd.Series("neutral", index=d.index)).astype(str)
+        rs_agrees = (direction.eq("bullish") & (rs > 0)) | (direction.eq("bearish") & (rs < 0))
+        rs_fights = (direction.eq("bullish") & (rs < 0)) | (direction.eq("bearish") & (rs > 0))
+        sc += np.select([rs_agrees, rs_fights], [10.0, -5.0], default=0.0)
+
+    if "adx" in d.columns:
+        adx = pd.to_numeric(d["adx"], errors="coerce")
+        adx_fit = (fam.eq("breakout") & (adx >= 20)) | (fam.eq("pullback") & (adx <= 32))
+        sc += np.where(adx_fit.fillna(False), 5.0, 0.0)
+
+    if "off_52w_high_pct" in d.columns:
+        off = pd.to_numeric(d["off_52w_high_pct"], errors="coerce")
+        near_high = fam.eq("breakout") & d["pattern"].str.startswith("Breakout") & (off >= -5.0)
+        sc += np.where(near_high.fillna(False), 5.0, 0.0)
+
+    d["score"] = np.clip(sc, 0, 100).round(0)
+    d["strength"] = strength(d["score"])
+    return d
+
+
 def qualify_row(row: pd.Series) -> bool:
     """
-    Decide if a detection qualifies for a watchlist:
-      - strong OR (medium AND aligned)
-      - allow counter-trend reversals for Hammer/BullishEngulfing
-      - for breakouts/breakdowns, require basic volume confirmation if available
+    Decide if a detection qualifies for a watchlist.
+
+    Deliberately score-free: the 35-symbol event study showed the composite
+    score does NOT rank forward returns within most patterns (confirmation is
+    late), so qualification uses only the discriminators that validated:
+      - regime alignment, OR counter-trend reversal for Hammer/BullishEngulfing
+      - for breakouts/breakdowns, basic volume confirmation if available
+    The score remains as descriptive/reporting output.
     """
-    reversal_ok = row.get("pattern") in {"Hammer","BullishEngulfing"} and row.get("alignment") == "counter-trend"
-    strong = row.get("strength") == "strong"
-    med_aligned = (row.get("strength") == "medium") and (row.get("alignment") == "aligned")
+    if row.get("direction") == "neutral":
+        return False
+    reversal_ok = row.get("pattern") in _REVERSAL_PATTERNS and row.get("alignment") == "counter-trend"
+    aligned_ok = row.get("alignment") == "aligned"
     vol_ok = True
     pat = str(row.get("pattern",""))
     if (pat.startswith("Breakout") or pat.startswith("Breakdown")):
         vol = row.get("vol_mult20", row.get("vol_mult", np.nan))
         if not pd.isna(vol):
             vol_ok = float(vol) >= 1.2
-    return (strong or med_aligned or reversal_ok) and vol_ok
+    return (aligned_ok or reversal_ok) and vol_ok
 
 
 def add_qualification(dets: pd.DataFrame) -> pd.DataFrame:
@@ -115,15 +175,23 @@ def enrich_detections(
     ind_df: pd.DataFrame,
     symbol: str,
     vol_lookback: int = 20,
-    high_lookback: int = 252
+    high_lookback: int = 252,
+    ctx: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
-    Convenience wrapper: direction/alignment → features → english → qualification.
+    Convenience wrapper: direction/alignment → features → rescore → english → qualification.
+    Pass `ctx` (market_context.build_market_context) to include relative
+    strength in features and scoring.
     Returns an enriched detections DataFrame.
     """
     d = add_direction_alignment(dets)
     feat = compute_context_features(df_ohlcv, ind_df, vol_lookback=vol_lookback, high_lookback=high_lookback)
+    if ctx is not None:
+        for c in ("rs_20", "rs_60"):
+            if c in ctx.columns:
+                feat[c] = ctx[c]
     d = merge_features(d, feat)
+    d = rescore(d)
     d = add_english(d, symbol)
     d = add_qualification(d)
     return d

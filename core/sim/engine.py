@@ -44,6 +44,9 @@ def _size_shares(entry_px: float, atr: float, sl_atr_k: float, cfg: Dict[str, An
     risk_cap = equity * float(_get(cfg, "risk.max_risk_per_trade", 0.005))
     stop_dist = max(1e-8, atr * max(1e-9, sl_atr_k))
     shares = risk_cap / stop_dist
+    # cap notional at available equity: risk-based sizing on low-ATR names
+    # can otherwise imply leverage the account doesn't have
+    shares = min(shares, equity / max(1e-9, entry_px))
     return max(0.0, shares)
 
 # ==== NEW: simple costs/slippage helpers ====
@@ -95,6 +98,11 @@ def simulate(
 
     start_cap = float(_get(cfg, "risk.capital", 1_000_000))
     equity = start_cap
+
+    #  MTM config
+    mtm_on = bool(_get(cfg, "equity.mtm", False))
+    mtm_haircut = float(_get(cfg, "equity.mtm_haircut_bps", 0.0)) / 10_000.0  # adverse haircut on mark
+
     equity_curve = np.full(len(close), np.nan, dtype=float)
 
     if signals is None or len(signals) == 0:
@@ -122,11 +130,12 @@ def simulate(
         for pos in open_positions:
             side = pos["side"]
             trail_k = pos["trail_atr"]
-            atr_t = float(atr[t])
 
             if side == "long":
-                if trail_k > 0:
-                    pos["trail_price"] = max(pos.get("trail_price", -np.inf), close[t] - atr_t * trail_k)
+                if trail_k > 0 and t > pos["entry_bar"]:
+                    # trail off the PRIOR bar's close: the current close isn't
+                    # knowable intrabar when the stop would actually trigger
+                    pos["trail_price"] = max(pos.get("trail_price", -np.inf), close[t-1] - float(atr[t-1]) * trail_k)
                 sl_eff = max(pos["sl_price"], pos.get("trail_price", -np.inf))
                 tp_eff = pos["tp_price"]
                 hit_sl = low[t] <= sl_eff
@@ -141,6 +150,13 @@ def simulate(
                     exit_px, reason = tp_eff, "TP"
                 elif max_hold and (t - pos["entry_bar"] >= max_hold):
                     exit_px, reason = close[t], "TIME"
+
+                # gap handling: if the bar opened beyond the level, the real
+                # fill is the open, not the level
+                if reason == "SL" and float(open_[t]) < exit_px:
+                    exit_px, reason = float(open_[t]), "SL_GAP"
+                elif reason == "TP" and float(open_[t]) > exit_px:
+                    exit_px, reason = float(open_[t]), "TP_GAP"
 
                 if exit_px is not None:
                     # apply slippage + fees on exit
@@ -164,8 +180,8 @@ def simulate(
                     still_open.append(pos)
 
             else:  # short
-                if trail_k > 0:
-                    pos["trail_price"] = min(pos.get("trail_price", np.inf), close[t] + atr_t * trail_k)
+                if trail_k > 0 and t > pos["entry_bar"]:
+                    pos["trail_price"] = min(pos.get("trail_price", np.inf), close[t-1] + float(atr[t-1]) * trail_k)
                 sl_eff = min(pos["sl_price"], pos.get("trail_price", np.inf))
                 tp_eff = pos["tp_price"]
                 hit_sl = high[t] >= sl_eff
@@ -180,6 +196,11 @@ def simulate(
                     exit_px, reason = tp_eff, "TP"
                 elif max_hold and (t - pos["entry_bar"] >= max_hold):
                     exit_px, reason = close[t], "TIME"
+
+                if reason == "SL" and float(open_[t]) > exit_px:
+                    exit_px, reason = float(open_[t]), "SL_GAP"
+                elif reason == "TP" and float(open_[t]) < exit_px:
+                    exit_px, reason = float(open_[t]), "TP_GAP"
 
                 if exit_px is not None:
                     exit_px_adj = _apply_slippage(exit_px, side, is_entry=False, slip_bps=costs["slip_bps"])
@@ -206,16 +227,22 @@ def simulate(
         if len(open_positions) < max_open:
             todays = sig[sig["bar_idx"] == t]
             for _, s in todays.iterrows():
+                if len(open_positions) >= max_open:
+                    break
                 if t < warmup:
                     continue
                 if t - last_filled_bar < cooldown:
                     continue
 
-                entry_bar = t + delay
+                # NEW: per-signal overrides with fallback to cfg
+                s_delay = int(s.get("delay_bars", _get(cfg, "execution.delay_bars", 1)))
+                s_enter = str(s.get("enter_at", _get(cfg, "execution.enter_at", "open"))).lower()
+
+                entry_bar = t + s_delay
                 if entry_bar >= len(close):
                     continue
 
-                raw_px = _entry_price(open_, close, entry_bar, enter_at)
+                raw_px = _entry_price(open_, close, entry_bar, s_enter)
                 side = s["side"]
                 atr_e = float(atr[entry_bar]) if len(atr) else 0.0
 
@@ -248,6 +275,22 @@ def simulate(
                 open_positions.append(pos)
                 last_filled_bar = entry_bar
                 fills.append({"bar": entry_bar, "price": entry_px, "type": "ENTRY", "tag": pos["tag"]})
+
+        eq_closed = equity
+        if mtm_on and len(open_positions):
+            # mark open positions to CLOSE[t], with slight adverse haircut
+            unreal = 0.0
+            px = float(close[t])
+            for pos in open_positions:
+                if pos["side"] == "long":
+                    mark = px * (1.0 - mtm_haircut)
+                    unreal += (mark - pos["entry_price"]) * pos["shares"]
+                else:
+                    mark = px * (1.0 + mtm_haircut)
+                    unreal += (pos["entry_price"] - mark) * pos["shares"]
+            equity_curve[t] = eq_closed + unreal
+        else:
+            equity_curve[t] = eq_closed
 
     trades_df = pd.DataFrame(trades)
     eq = pd.Series(equity_curve, index=df_ohlcv.index).ffill().fillna(start_cap)

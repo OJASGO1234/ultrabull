@@ -12,6 +12,7 @@ from sim.metrics import summarize, by_tag, audit_exits
 from sim.viz import overlay_trades, overlay_fills, overlay_signals_rail
 from sim.tune import try_presets
 from rules.gates import apply_gates
+from market_context import build_market_context
 from sim.report import export_backtest_excel, summarize_to_md
 
 import mplfinance as mpf
@@ -48,14 +49,17 @@ cfg = {
         "BullishEngulfing": {"side": "long","sl_atr": 1.5, "tp_atr": 3.0},
         "BearishEngulfing": {"side": "short","sl_atr": 1.5, "tp_atr": 3.0},
         "Doji": {"side": "long","sl_atr": 1.2, "tp_atr": 2.0},
+        "MACD_Cross_Zeroish_Down": {"side": "short", "sl_atr": 1.5, "tp_atr": 3.0},
     },
     "defaults": {"sl_atr": 1.5, "tp_atr": 3.0, "trail_atr": 0.0},
 }
 
 
 if __name__ == "__main__":
-    symbol = "SHALBY.NS"
-    df, ind, trend = analyze_symbol(symbol, years=1)
+    symbol = "SWSOLAR.NS"
+    symbol = "GANESHCO.NS"
+    symbol = "HINDCOPPER.NS"
+    df, ind, trend = analyze_symbol(symbol, years=0.5)
     print(df.head())
     events = load_events(symbol, df)
     print(events)
@@ -74,11 +78,15 @@ if __name__ == "__main__":
     detections = run_all_patterns(df_ohlcv, ind_df, CFG)
     print(detections.tail(10))
 
+    # market/sector context first: enrichment folds relative strength into the score
+    ctx = build_market_context(symbol, df_ohlcv["Close"], years=1.0)
+
     detections_enriched = enrich_detections(
         dets=detections,
         df_ohlcv=df_ohlcv,   # lowercase OHLCV is fine here
         ind_df=ind_df,
-        symbol=symbol
+        symbol=symbol,
+        ctx=ctx,
     )
 
     cut = warmup_cutoff(ind_df)
@@ -108,7 +116,6 @@ if __name__ == "__main__":
     md5 = recent_summary_md(detections_enriched, df_ohlcv, ind_df, symbol, days=5)
     with open(f"{symbol}_recent_5.md","w") as f: f.write(md5)
 
-    cfg["disable_patterns"] = ["RSI_60_Down"]
 
     cfg.setdefault("costs", {})
     cfg["costs"].update({
@@ -133,9 +140,47 @@ if __name__ == "__main__":
     cfg["execution"].update({"enter_at": "Open", "delay_bars": 1})
 
     # optionally sideline clearly weak patterns for now
-    cfg["disable_patterns"] = ["Breakdown20"]
+    # cfg["disable_patterns"] = ["RSI_60_Down"]
+    # Doji is indecision, not a tradeable direction.
+    # RSI crosses, MACD_Cross_Zeroish_Up, BB_SellFade and both Breakdowns showed
+    # zero/negative edge in the 35-symbol 4y event study, before AND after
+    # gating (see core/event_study.py + core/evaluate_gates.py).
+    # BearishEngulfing is the one short-side pattern that earns its keep.
+    cfg["disable_patterns"] = [
+        "RSI_60_Down", "RSI_40_Up", "Doji", "MACD_Cross_Zeroish_Up",
+        "BB_SellFade", "Breakdown20", "Breakdown55", "VCP_Setup",
+    ]
 
-    det_gated = apply_gates(detections_enriched, df_ohlcv, ind_df, cfg)
+    cfg.setdefault("equity", {})
+    cfg["equity"]["mtm"] = True
+    cfg["equity"]["mtm_haircut_bps"] = 2.0   # optional: small adverse haircut; set 0 to disable
+
+
+
+    # market/sector regime + relative-strength context (NIFTY + sector index)
+    cfg["gates"]["market"] = {
+        "enabled": True,
+        "require_market_regime": True,
+        "require_sector_regime": False,
+        "rs_col": "rs_20",
+        "breakout_rs_min": 0.0,
+        "breakdown_rs_max": 0.0,
+        "dist_days_max": 5.0,   # validated: pool excess @10 nearly doubles
+        "breadth_min": 0.0,     # tested, redundant with NIFTY regime — display only
+    }
+    # no fresh entries just before/after earnings announcements
+    cfg["gates"]["events"] = {
+        "enabled": True,
+        "earnings_blackout_before": 3,
+        "earnings_blackout_after": 1,
+    }
+
+    # ADX gates evaluated and rejected (they select late, extended entries) —
+    # available as knobs but off by default. Liquidity floor kept: tradability.
+    cfg["gates"]["adx"] = {"breakout_min": 0.0, "meanrev_max": 0.0}
+    cfg["gates"]["liquidity"] = {"min_turnover_20d": 2e7}  # ₹2 cr median daily turnover
+
+    det_gated = apply_gates(detections_enriched, df_ohlcv, ind_df, cfg, ctx=ctx, events=events)
     signals = compile_signals(det_gated, df_ohlcv, ind_df, cfg)
     print(signals)
 
@@ -153,7 +198,7 @@ if __name__ == "__main__":
     print(by_pat.round(2).head(15))
 
     print("\nAudit (SL/TP mismatches, if any):")
-    print(audit_exits(trades))
+    print(audit_exits(trades, cfg))
 
     # out_path = "ultrabull_run.xlsx"
     # export_backtest_excel(out_path, trades, equity, by_pattern=by_pat, signals=signals, cfg=cfg)

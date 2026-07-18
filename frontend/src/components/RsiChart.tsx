@@ -63,6 +63,9 @@ export function RsiChart({ data, theme: t }: Props) {
         {hover != null && <span className="hover-readout">{fmt.price(hover, 1)}</span>}
       </div>
       <div ref={ref} className="chart" />
+      {data.interpretations?.rsi && (
+        <p className="chart-note chart-inference">{data.interpretations.rsi}</p>
+      )}
       <p className="chart-note">
         40/60 are the pipeline's actual crossing triggers; 30/70 are visual reference only.
       </p>

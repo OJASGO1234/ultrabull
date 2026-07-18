@@ -14,16 +14,38 @@ CORE = os.path.join(ROOT, "core")
 if CORE not in sys.path:
     sys.path.insert(0, CORE)
 
+# Load repo-root .env (ANTHROPIC_API_KEY for the chat assistant, etc.)
+from dotenv import load_dotenv
+load_dotenv(os.path.join(ROOT, ".env"))
+
 import copy
+import json
 import math
 import threading
 import time
+from datetime import date as _date_cls
 
+import anthropic
+import numpy as np
 import pandas as pd
+import yfinance as yf
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from stock_explorer import load_data, compute_indicators
+from stock_explorer import load_data, compute_indicators, load_events
+from market_context import (
+    MARKET_INDEX, SECTOR_INDEX, SYMBOL_SECTOR,
+    build_market_context, _load_index_close,
+)
+from levels import find_levels
+from outlook import build_outlook
+from advice import build_advice
+from fundamentals import fetch_fundamentals
+from interpret import interpret_rsi, interpret_macd, interpret_equity
+from idea_lab import evaluate_rule, FEATURES as IDEA_FEATURES
+
+IDEA_CACHE_DIR = os.path.join(ROOT, "data_cache")
 from vbt_to_pd_ind import build_ind_df_from_vbt, extract_symbol_df
 from patterns.config import CFG
 from patterns.pipeline import run_all_patterns
@@ -64,7 +86,32 @@ def build_cfg() -> dict:
     cfg["gates"]["bb_touch_eps"] = 0.0
     cfg["gates"]["pullback_ma_tol"] = 0.01
     cfg["execution"].update({"enter_at": "Open", "delay_bars": 1})
-    cfg["disable_patterns"] = ["RSI_60_Down", "RSI_40_Up"]
+    # Evidence-backed prunes (35-symbol 4y event study): RSI crosses, MACD_Up,
+    # Doji, and the whole short side except BearishEngulfing have no edge.
+    cfg["disable_patterns"] = [
+        "RSI_60_Down", "RSI_40_Up", "Doji", "MACD_Cross_Zeroish_Up",
+        "BB_SellFade", "Breakdown20", "Breakdown55",
+        "VCP_Setup",  # context only: the coil itself tested edge-less; the trade is the breakout from it
+    ]
+    cfg["gates"]["market"] = {
+        "enabled": True,
+        "require_market_regime": True,
+        "require_sector_regime": False,
+        "rs_col": "rs_20",
+        "breakout_rs_min": 0.0,
+        "breakdown_rs_max": 0.0,
+        # distribution-day ceiling validated (pool excess @10: +15.8 -> +29.3 bps);
+        # breadth_min tested and left OFF (redundant with NIFTY regime on this universe)
+        "dist_days_max": 5.0,
+        "breadth_min": 0.0,
+    }
+    cfg["gates"]["events"] = {
+        "enabled": True,
+        "earnings_blackout_before": 3,
+        "earnings_blackout_after": 1,
+    }
+    cfg["gates"]["adx"] = {"breakout_min": 0.0, "meanrev_max": 0.0}  # evaluated & rejected
+    cfg["gates"]["liquidity"] = {"min_turnover_20d": 2e7}
     cfg.setdefault("equity", {})
     cfg["equity"]["mtm"] = True
     cfg["equity"]["mtm_haircut_bps"] = 2.0
@@ -132,11 +179,117 @@ def _bar_date(df_ohlcv: pd.DataFrame, bar: int) -> str | None:
     return _date(df_ohlcv.index[int(bar)])
 
 
+# ---------- event/timing helpers ----------
+
+def _compute_timing(symbol: str, events: pd.DataFrame | None, cfg: dict) -> dict:
+    """Forward-looking timing intelligence: where are we in the results cycle,
+    is the earnings blackout active, upcoming ex-dividend. Best-effort — any
+    yfinance hiccup degrades to nulls, never fails the request."""
+    today = pd.Timestamp(_date_cls.today())
+    egate = (cfg.get("gates") or {}).get("events") or {}
+    blackout_before = int(egate.get("earnings_blackout_before", 3))
+
+    out = {
+        "next_earnings": None,
+        "trading_days_to_next_earnings": None,
+        "in_earnings_blackout": False,
+        "last_earnings": None,
+        "days_since_last_earnings": None,
+        "results_overdue": False,
+        "next_ex_dividend": None,
+        "last_dividend": None,
+        "last_split": None,
+        "earnings_data_stale": False,
+    }
+
+    # Past events from the tidy frame (already clipped to the price window)
+    if events is not None and len(events):
+        et = events.copy()
+        et["date"] = pd.to_datetime(et["date"])
+        past = et[et["date"] <= today]
+        for typ, key in (("EARNINGS", "last_earnings"), ("DIVIDEND", "last_dividend"), ("SPLIT", "last_split")):
+            rows = past[past["type"].astype(str).str.upper() == typ]
+            if len(rows):
+                r = rows.iloc[-1]
+                out[key] = {"date": _date(r["date"]), "label": str(r.get("label", typ))}
+
+    # Future earnings via yfinance (the tidy frame only covers the past window)
+    try:
+        ed = yf.Ticker(symbol).get_earnings_dates(limit=12)
+        if ed is not None and len(ed):
+            idx = pd.to_datetime(ed.index)
+            if getattr(idx, "tz", None) is not None:
+                idx = idx.tz_localize(None)
+            idx = idx.normalize()
+            future = sorted(d for d in idx if d > today)
+            past = sorted(d for d in idx if d <= today)
+            if past:
+                prev = out["last_earnings"]
+                # keep whichever known past date is fresher
+                if prev is None or past[-1] > pd.Timestamp(prev["date"]):
+                    out["last_earnings"] = {"date": _date(past[-1]), "label": "E"}
+            if future:
+                nxt = future[0]
+                tdays = int(np.busday_count(today.date(), nxt.date()))
+                out["next_earnings"] = _date(nxt)
+                out["trading_days_to_next_earnings"] = tdays
+                out["in_earnings_blackout"] = tdays <= blackout_before
+    except Exception:
+        pass
+
+    if out["last_earnings"] is not None:
+        days_since = int((today - pd.Timestamp(out["last_earnings"]["date"])).days)
+        out["days_since_last_earnings"] = days_since
+        # Indian listed companies report quarterly (~91d cadence); if no known
+        # future date and the last one is 80-200 days old, results are due soon.
+        # Beyond ~200 days Yahoo's coverage for this name is simply stale
+        # (common on NSE midcaps) — flag it instead of claiming "overdue".
+        out["earnings_data_stale"] = days_since > 200
+        out["results_overdue"] = (
+            out["next_earnings"] is None and 80 <= days_since <= 200
+        )
+
+    try:
+        cal = yf.Ticker(symbol).calendar or {}
+        exd = cal.get("Ex-Dividend Date")
+        if exd is not None:
+            exd_ts = pd.Timestamp(exd)
+            if exd_ts >= today:
+                out["next_ex_dividend"] = _date(exd_ts)
+    except Exception:
+        pass
+
+    return out
+
+
+def _context_snapshot(symbol: str, ctx: pd.DataFrame | None, ind_df: pd.DataFrame) -> dict:
+    out = {
+        "market_regime": None, "sector_regime": None, "sector": SYMBOL_SECTOR.get(symbol),
+        "rs_20": None, "rs_60": None, "adx": None, "breadth": None, "dist_days": None,
+    }
+    if ctx is not None and len(ctx):
+        last = ctx.iloc[-1]
+        out["market_regime"] = "uptrend" if bool(last.get("mkt_up")) else ("downtrend" if bool(last.get("mkt_dn")) else "neutral")
+        out["sector_regime"] = "uptrend" if bool(last.get("sect_up")) else ("downtrend" if bool(last.get("sect_dn")) else "neutral")
+        out["rs_20"] = _num(last.get("rs_20"))
+        out["rs_60"] = _num(last.get("rs_60"))
+        out["breadth"] = _num(last.get("breadth"))
+        out["dist_days"] = _num(last.get("dist_days"))
+    if "ADX" in ind_df.columns and len(ind_df):
+        out["adx"] = _num(ind_df["ADX"].iloc[-1])
+    return out
+
+
 # ---------- pipeline runner ----------
 
-def run_analysis(symbol: str, years: float) -> dict:
-    df = load_data(symbol, years)
+def run_analysis(symbol: str, years: float, start: str | None = None, end: str | None = None) -> dict:
+    df = load_data(symbol, years, start=start, end=end)
     ind = compute_indicators(df)
+
+    # context/index loaders fetch from today backwards — make sure they reach
+    # back to the window start even for historical custom ranges
+    if start:
+        years = max(years, (pd.Timestamp.now() - pd.Timestamp(start)).days / 365.0)
 
     df_ohlcv = extract_symbol_df(df, symbol=symbol, case="title")
     ind_df = build_ind_df_from_vbt(df_ohlcv, ind)
@@ -151,6 +304,16 @@ def run_analysis(symbol: str, years: float) -> dict:
 
     cfg = build_cfg()
 
+    # market/sector context + corporate events — best-effort, never fatal
+    try:
+        ctx = build_market_context(symbol, df_ohlcv["Close"], years=max(years, 1.0))
+    except Exception:
+        ctx = None
+    try:
+        events = load_events(symbol, df_ohlcv.rename(columns=str.lower))
+    except Exception:
+        events = pd.DataFrame(columns=["date", "type", "label"])
+
     if detections is None or detections.empty:
         det_enriched = empty_dets.assign(direction=None, alignment=None, qualified=False)
         signals = pd.DataFrame(columns=["bar_idx", "side", "tag"])
@@ -158,12 +321,12 @@ def run_analysis(symbol: str, years: float) -> dict:
         equity = pd.Series(cfg["risk"]["capital"], index=df_ohlcv.index, dtype=float)
         sig_summary = {}
     else:
-        det_enriched = enrich_detections(detections, df_ohlcv, ind_df, symbol)
+        det_enriched = enrich_detections(detections, df_ohlcv, ind_df, symbol, ctx=ctx)
         cut = warmup_cutoff(ind_df)
         det_enriched = det_enriched[det_enriched["date"] >= cut]
         sig_summary = summarize_signals(det_enriched)
 
-        det_gated = apply_gates(det_enriched, df_ohlcv, ind_df, cfg)
+        det_gated = apply_gates(det_enriched, df_ohlcv, ind_df, cfg, ctx=ctx, events=events)
         signals = compile_signals(det_gated, df_ohlcv, ind_df, cfg)
         trades, equity, _fills = simulate(df_ohlcv, signals, ind_df, cfg)
 
@@ -175,8 +338,41 @@ def run_analysis(symbol: str, years: float) -> dict:
     # ---- serialize ----
     macd_hist = ind_df["MACD"] - ind_df["MACD_signal"]
 
+    # plan levels (entry reference / stop / target in ₹) per detection, from the
+    # same per-pattern ATR multiples the simulator trades with
+    close_by_date = df_ohlcv["Close"]
+
+    def _plan(pattern: str, direction, date=None, bar: int | None = None,
+              sl_atr=None, tp_atr=None, side=None):
+        p_cfg = (cfg.get("patterns") or {}).get(pattern, {})
+        side = side or p_cfg.get("side") or ("short" if direction == "bearish" else "long")
+        sl_k = float(sl_atr if sl_atr is not None else p_cfg.get("sl_atr", cfg["defaults"]["sl_atr"]))
+        tp_k = float(tp_atr if tp_atr is not None else p_cfg.get("tp_atr", cfg["defaults"]["tp_atr"]))
+        try:
+            if bar is not None:
+                ref = float(df_ohlcv["Close"].iloc[bar])
+                a = float(ind_df["ATR"].iloc[bar])
+            else:
+                ref = float(close_by_date.loc[date])
+                a = float(ind_df["ATR"].loc[date])
+        except (KeyError, IndexError):
+            return {"side": side, "sl_atr": sl_k, "tp_atr": tp_k,
+                    "ref_close": None, "sl_est": None, "tp_est": None}
+        if not (math.isfinite(ref) and math.isfinite(a)):
+            return {"side": side, "sl_atr": sl_k, "tp_atr": tp_k,
+                    "ref_close": None, "sl_est": None, "tp_est": None}
+        sgn = 1.0 if side == "long" else -1.0
+        return {
+            "side": side, "sl_atr": sl_k, "tp_atr": tp_k,
+            "ref_close": round(ref, 2),
+            "sl_est": round(ref - sgn * sl_k * a, 2),
+            "tp_est": round(ref + sgn * tp_k * a, 2),
+        }
+
     detections_json = []
     for r in det_enriched.itertuples(index=False):
+        plan = _plan(getattr(r, "pattern"), getattr(r, "direction", None),
+                     date=getattr(r, "date"))
         detections_json.append({
             "date": _date(getattr(r, "date")),
             "pattern": getattr(r, "pattern"),
@@ -187,11 +383,18 @@ def run_analysis(symbol: str, years: float) -> dict:
             "alignment": getattr(r, "alignment", None),
             "qualified": bool(getattr(r, "qualified", False)),
             "english": getattr(r, "english", None),
+            "side": plan["side"],
+            "ref_close": plan["ref_close"],
+            "sl_est": plan["sl_est"],
+            "tp_est": plan["tp_est"],
         })
 
     signals_json = []
     for r in signals.itertuples(index=False):
         bar = int(getattr(r, "bar_idx"))
+        plan = _plan(getattr(r, "tag"), None, bar=bar,
+                     sl_atr=getattr(r, "sl_atr", None), tp_atr=getattr(r, "tp_atr", None),
+                     side=getattr(r, "side", None))
         signals_json.append({
             "bar_idx": bar,
             "date": _bar_date(df_ohlcv, bar),
@@ -204,6 +407,9 @@ def run_analysis(symbol: str, years: float) -> dict:
             "sl_atr": _num(getattr(r, "sl_atr", None)),
             "tp_atr": _num(getattr(r, "tp_atr", None)),
             "trail_atr": _num(getattr(r, "trail_atr", None)),
+            "ref_close": plan["ref_close"],
+            "sl_est": plan["sl_est"],
+            "tp_est": plan["tp_est"],
         })
 
     trades_json = []
@@ -255,6 +461,80 @@ def run_analysis(symbol: str, years: float) -> dict:
             "by_family": {k: int(v) for k, v in (sig_summary.get("by_family") or {}).items()},
         }
 
+    events_json = []
+    if events is not None and len(events):
+        for r in events.itertuples(index=False):
+            events_json.append({
+                "date": _date(getattr(r, "date")),
+                "type": str(getattr(r, "type", "")).upper(),
+                "label": str(getattr(r, "label", "")),
+            })
+
+    timing_json = _compute_timing(symbol, events, cfg)
+    context_json = _context_snapshot(symbol, ctx, ind_df)
+
+    # support/resistance from the most recent ~1y of bars, plus outlook
+    try:
+        look = min(len(df_ohlcv), 260)
+        raw_levels = find_levels(df_ohlcv.iloc[-look:], ind_df.iloc[-look:])
+    except Exception:
+        raw_levels = []
+    levels_json = [{
+        "price": lv["price"],
+        "kind": lv["kind"],
+        "touches": lv["touches"],
+        "strength": _num(lv["strength"]),
+        "last_touch": _date(lv["last_touch"]),
+        "source": lv["source"],
+        "distance_pct": _num(lv["distance_pct"]),
+    } for lv in raw_levels]
+
+    try:
+        outlook_json = build_outlook(ind_df, ctx, raw_levels, float(df_ohlcv["Close"].iloc[-1]))
+    except Exception:
+        outlook_json = None
+
+    try:
+        advice_json = build_advice(df_ohlcv, ind_df, ctx, raw_levels, timing_json, det_enriched)
+    except Exception:
+        advice_json = None
+
+    try:
+        fundamentals_json = fetch_fundamentals(symbol)
+    except Exception:
+        fundamentals_json = None
+
+    # deterministic plain-English chart readings (see core/interpret.py)
+    try:
+        interpretations_json = {
+            "rsi": interpret_rsi(ind_df, df_ohlcv["Close"]),
+            "macd": interpret_macd(ind_df),
+            "equity": interpret_equity(equity, trades),
+        }
+    except Exception:
+        interpretations_json = None
+
+    # NIFTY + sector index closes aligned to the stock's trading days, for
+    # rebased overlay on the price chart
+    def _index_series(ticker: str) -> list[dict]:
+        s = _load_index_close(ticker, max(years, 1.0) + 0.5)
+        if s is None:
+            return []
+        return _series_points(s.reindex(df_ohlcv.index).ffill())
+
+    indexes_json = []
+    try:
+        pts = _index_series(MARKET_INDEX)
+        if pts:
+            indexes_json.append({"name": "NIFTY 50", "points": pts})
+        sect_key = SYMBOL_SECTOR.get(symbol)
+        if sect_key and sect_key in SECTOR_INDEX:
+            pts = _index_series(SECTOR_INDEX[sect_key])
+            if pts:
+                indexes_json.append({"name": f"NIFTY {sect_key}", "points": pts})
+    except Exception:
+        pass
+
     metrics_json = {
         "trades": int(metrics.get("trades", 0)),
         "win_rate": _num(metrics.get("win_rate")),
@@ -284,7 +564,17 @@ def run_analysis(symbol: str, years: float) -> dict:
             "macd": _series_points(ind_df["MACD"]),
             "macd_signal": _series_points(ind_df["MACD_signal"]),
             "macd_hist": _series_points(macd_hist),
+            "adx": _series_points(ind_df["ADX"]) if "ADX" in ind_df.columns else [],
         },
+        "events": events_json,
+        "context": context_json,
+        "timing": timing_json,
+        "levels": levels_json,
+        "outlook": outlook_json,
+        "advice": advice_json,
+        "fundamentals": fundamentals_json,
+        "interpretations": interpretations_json,
+        "indexes": indexes_json,
         "detections": detections_json,
         "signals": signals_json,
         "trades": trades_json,
@@ -326,10 +616,11 @@ def _cache_put(key: tuple[str, float], result: dict) -> None:
         _cache[key] = (now, result)
 
 
-def cached_analysis(symbol: str, years: float) -> tuple[dict, bool]:
+def cached_analysis(symbol: str, years: float, start: str | None = None,
+                    end: str | None = None) -> tuple[dict, bool]:
     """Return (result, was_cached). Concurrent misses on the same key run the
     pipeline once; the rest wait on the per-key lock and read the fresh entry."""
-    key = (symbol, years)
+    key = (symbol, years, start or "", end or "")
     cached = _cache_get(key)
     if cached is not None:
         return cached, True
@@ -341,7 +632,7 @@ def cached_analysis(symbol: str, years: float) -> tuple[dict, bool]:
         if cached is not None:
             return cached, True
         try:
-            result = run_analysis(symbol, years)
+            result = run_analysis(symbol, years, start=start, end=end)
             _cache_put(key, result)
             return result, False
         finally:
@@ -354,13 +645,214 @@ def health():
     return {"status": "ok"}
 
 
+# ---------- chat assistant ----------
+
+CHAT_MODEL = "claude-opus-4-8"
+
+CHAT_SYSTEM = """You are the analysis assistant inside Ultrabull, a technical-analysis \
+web app for NSE/BSE stocks. The user sees a dashboard with: a level-aware buy/sell \
+synthesis, an empirical outlook (state-conditioned base rates), timing context (market/\
+sector regime, relative strength, earnings cycle, breadth, distribution days), a price \
+chart with support/resistance levels, backtest results, and pattern detections.
+
+You receive the CURRENT analysis payload as JSON. Ground every answer in it — quote the \
+actual numbers (prices, percentages, dates) rather than speaking generically. If the \
+payload doesn't contain what's needed, say so plainly instead of guessing.
+
+Project-validated knowledge you should apply (from this system's own 35-symbol, 4-year \
+event studies):
+- Validated edges: market-regime gate, relative-strength-vs-sector gate, earnings \
+blackout (−3/+1 days), distribution-day ceiling (<5 in 25 sessions), Hammer (long) and \
+BearishEngulfing (short) patterns. Breakouts have edge only when gated, over ~2+ weeks.
+- Tested and rejected: RSI>50 as blanket confirmation (only the 50-65 band has mild \
+edge; RSI>70 is NEGATIVE for fresh longs), 2x volume spikes as "institutional signals", \
+blanket P/E<20 screens, ADX entry gates, composite-score ranking, VCP coil as an entry, \
+PEAD drift on NSE large caps.
+- Honest limits: no technical state predicted 1-week direction above ~58% in 4 years of \
+data; day-ahead direction is a coin flip; edges are non-stationary (the walk-forward \
+showed the best in-sample patterns degrading most recently).
+
+Style: concise, numerate, plain English. The user does their own fundamental research — \
+your job is the technical/timing side. You are not a financial adviser and must not \
+promise outcomes; frame everything as evidence and risk, and say "the data doesn't \
+support that" when it doesn't. Refuse requests to place orders — this app analyzes, the \
+user decides and executes.
+
+You have a `test_rule` tool that backtests rule ideas against the project's 4y NSE \
+universe with the same event-study methodology. When the user proposes a testable rule \
+("does X work?", "what if we buy when..."), translate it into conditions and RUN it \
+rather than speculating. Report results honestly: sample size, t-stat (treat |t| < 2 as \
+inconclusive), hit rate, and ALWAYS compare the recent-12-months split against the full \
+sample — an edge that vanished recently is not an edge. Small n or thin coverage means \
+say so."""
+
+
+TEST_RULE_TOOL = {
+    "name": "test_rule",
+    "description": (
+        "Backtest a trading idea against the 4-year, 35-symbol NSE universe using the "
+        "project's event-study methodology. Express the idea as 1-6 numeric conditions "
+        "that must ALL hold on a bar; the tool returns pooled forward-return excess "
+        "(vs each symbol's own drift) at 5/10/21 bars with n, t-stat, hit rate, and a "
+        "recent-12-months stability split. Call it whenever the user proposes a rule, "
+        "heuristic, or 'does X work?' question that maps to these features. "
+        "Feature units: percentages are in % (e.g. ret_20_pct > 10 means +10%); "
+        "vol_mult20 is a multiple (2 = twice average volume); rsi/adx are 0-100; "
+        "macd_above_signal and mkt_up are 0/1 flags; dist_days is a count; "
+        "breadth_pct is 0-100."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Short label for the idea"},
+            "direction": {"type": "string", "enum": ["long", "short"]},
+            "conditions": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 6,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "feature": {"type": "string", "enum": IDEA_FEATURES},
+                        "op": {"type": "string", "enum": ["<", "<=", ">", ">=", "=="]},
+                        "value": {"type": "number"},
+                    },
+                    "required": ["feature", "op", "value"],
+                },
+            },
+        },
+        "required": ["direction", "conditions"],
+    },
+}
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    symbol: str
+    years: float = 0.5
+    start: str | None = None
+    end: str | None = None
+    messages: list[ChatMessage]
+
+
+def _chat_context(result: dict) -> str:
+    """Compact analysis context: everything except the heavy per-bar series."""
+    slim = {k: v for k, v in result.items() if k not in ("ohlcv", "indicators", "equity")}
+    slim["detections"] = [d for d in slim.get("detections", []) if d.get("qualified")][-15:]
+    slim["signals"] = slim.get("signals", [])[-15:]
+    slim["trades"] = slim.get("trades", [])[-15:]
+    slim["last_close"] = result["ohlcv"][-1]["close"] if result.get("ohlcv") else None
+    slim.pop("summary_md", None)
+    return json.dumps(slim, default=str)
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    if not req.messages or req.messages[-1].role != "user":
+        raise HTTPException(status_code=422, detail="Last message must be from the user")
+    symbol = req.symbol.strip().upper()
+    try:
+        result, _ = cached_analysis(symbol, req.years, req.start, req.end)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    client = anthropic.Anthropic()
+    msgs = [{"role": m.role, "content": m.content} for m in req.messages[-20:]]
+    system_blocks = [
+        {"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}},
+        {"type": "text",
+         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result)}"},
+    ]
+    try:
+        # short agentic loop: Claude may call test_rule to backtest user ideas
+        for _ in range(4):
+            response = client.messages.create(
+                model=CHAT_MODEL,
+                max_tokens=8192,
+                system=system_blocks,
+                tools=[TEST_RULE_TOOL],
+                messages=msgs,
+            )
+            if response.stop_reason != "tool_use":
+                break
+            msgs.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type != "tool_use":
+                    continue
+                try:
+                    res = evaluate_rule(
+                        conditions=block.input["conditions"],
+                        direction=block.input.get("direction", "long"),
+                        name=block.input.get("name", "idea"),
+                        cache_dir=IDEA_CACHE_DIR,
+                    )
+                    tool_results.append({"type": "tool_result", "tool_use_id": block.id,
+                                         "content": json.dumps(res, default=str)})
+                except Exception as e:
+                    tool_results.append({"type": "tool_result", "tool_use_id": block.id,
+                                         "content": f"test_rule failed: {e}", "is_error": True})
+            msgs.append({"role": "user", "content": tool_results})
+    except (anthropic.AuthenticationError, TypeError):
+        # TypeError = SDK found no credential source at all (raised at request time)
+        raise HTTPException(
+            status_code=503,
+            detail="Chat needs an Anthropic API key: set ANTHROPIC_API_KEY in the "
+                   "server environment (or run `ant auth login`) and restart the API.",
+        )
+    except anthropic.RateLimitError:
+        raise HTTPException(status_code=429, detail="Rate limited by the Claude API — try again shortly.")
+    except anthropic.APIStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Claude API error ({e.status_code}): {e.message}")
+    except anthropic.APIConnectionError:
+        raise HTTPException(status_code=503, detail="Could not reach the Claude API — check network.")
+
+    reply = "".join(b.text for b in response.content if b.type == "text")
+    return {"reply": reply, "model": response.model}
+
+
+class IdeaCondition(BaseModel):
+    feature: str
+    op: str
+    value: float
+
+
+class IdeaRequest(BaseModel):
+    direction: str = "long"
+    name: str = "idea"
+    conditions: list[IdeaCondition]
+
+
+@app.post("/api/idea")
+def idea(req: IdeaRequest):
+    """Direct rule-testing endpoint (same engine the chat tool uses)."""
+    try:
+        return evaluate_rule(
+            conditions=[c.model_dump() for c in req.conditions],
+            direction=req.direction, name=req.name, cache_dir=IDEA_CACHE_DIR,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @app.get("/api/analyze/{symbol}")
-def analyze(symbol: str, years: float = Query(0.5, gt=0.0, le=10.0)):
+def analyze(
+    symbol: str,
+    years: float = Query(0.5, gt=0.0, le=10.0),
+    start: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+):
     symbol = symbol.strip().upper()
     if not symbol:
         raise HTTPException(status_code=422, detail="Empty symbol")
+    if start and end and start >= end:
+        raise HTTPException(status_code=422, detail="start must be before end")
     try:
-        result, was_cached = cached_analysis(symbol, years)
+        result, was_cached = cached_analysis(symbol, years, start, end)
     except ValueError as e:
         # load_data raises ValueError("No data for <symbol>") on unknown tickers
         raise HTTPException(status_code=404, detail=str(e))
