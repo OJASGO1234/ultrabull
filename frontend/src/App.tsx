@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { fetchAnalysis, type RangeQuery } from './api'
+import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from './api'
 import type { AnalysisResponse } from './types'
 import { useTheme } from './theme'
 import { PriceChart } from './components/PriceChart'
@@ -15,19 +15,40 @@ import { OutlookCard } from './components/OutlookCard'
 import { AdviceCard } from './components/AdviceCard'
 import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
+import { HoldingsPage } from './components/HoldingsPage'
+import { Login } from './components/Login'
+import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
 
-const PRESETS = [
-  { value: '0.25', label: '3 months' },
-  { value: '0.5', label: '6 months' },
-  { value: '1', label: '1 year' },
-  { value: '2', label: '2 years' },
-  { value: '3', label: '3 years' },
-  { value: '5', label: '5 years' },
-  { value: 'custom', label: 'Custom range…' },
-]
+type Page = 'analyze' | 'holdings'
 
 export default function App() {
   const theme = useTheme()
+  const [page, setPage] = useState<Page>(() =>
+    new URLSearchParams(window.location.search).get('page') === 'holdings' ? 'holdings' : 'analyze',
+  )
+  const [wide, setWide] = useState(() => localStorage.getItem('ui.wide') === '1')
+  const [authState, setAuthState] = useState<'checking' | 'login' | 'ok'>('checking')
+  const [authRequired, setAuthRequired] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchMe()
+      .then((me) => {
+        if (cancelled) return
+        setAuthRequired(me.auth_required)
+        setAuthState(me.auth_required && !me.username ? 'login' : 'ok')
+      })
+      .catch(() => {
+        // API unreachable — let the app render; requests will surface errors
+        if (!cancelled) setAuthState('ok')
+      })
+    const onUnauthorized = () => setAuthState('login')
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+    return () => {
+      cancelled = true
+      window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized)
+    }
+  }, [])
   const [symbol, setSymbol] = useState('HINDCOPPER.NS')
   const [rangeSel, setRangeSel] = useState('0.5')
   const [fromDate, setFromDate] = useState('')
@@ -95,16 +116,87 @@ export default function App() {
     }
   }
 
+  const switchPage = useCallback((p: Page) => {
+    setPage(p)
+    const url = new URL(window.location.href)
+    if (p === 'holdings') url.searchParams.set('page', 'holdings')
+    else url.searchParams.delete('page')
+    window.history.replaceState(null, '', url)
+  }, [])
+
+  const openAnalysis = useCallback(
+    (s: string) => {
+      switchPage('analyze')
+      setSymbol(s)
+      setRangeSel('1')
+      void run(s, { years: 1 })
+    },
+    [run, switchPage],
+  )
+
+  const toggleWide = () => {
+    setWide((w) => {
+      localStorage.setItem('ui.wide', w ? '0' : '1')
+      return !w
+    })
+  }
+
+  if (authState === 'checking') {
+    return <div className="page"><div className="loading">Loading…</div></div>
+  }
+  if (authState === 'login') {
+    return <Login onSuccess={() => setAuthState('ok')} />
+  }
+
   return (
-    <div className="page">
+    <div className={wide ? 'page page-wide' : 'page'}>
       <header className="page-head">
         <h1>Ultrabull</h1>
         <p className="subtitle">
           Pattern detection + backtest for one NSE/BSE ticker (Yahoo Finance symbols, e.g.{' '}
           <code>ATUL.NS</code>)
         </p>
+        <nav className="tabs" aria-label="Pages">
+          <button
+            type="button"
+            className={page === 'analyze' ? 'tab tab-on' : 'tab'}
+            onClick={() => switchPage('analyze')}
+          >
+            Analyze
+          </button>
+          <button
+            type="button"
+            className={page === 'holdings' ? 'tab tab-on' : 'tab'}
+            onClick={() => switchPage('holdings')}
+          >
+            SRE holdings
+          </button>
+          <button
+            type="button"
+            className="tab tab-end"
+            onClick={toggleWide}
+            title={wide ? 'Constrain to a centered column' : 'Use the full window width'}
+          >
+            {wide ? '⇥⇤ Normal width' : '⇤⇥ Full width'}
+          </button>
+          {authRequired && (
+            <button
+              type="button"
+              className="tab"
+              onClick={() => {
+                clearToken()
+                setAuthState('login')
+              }}
+            >
+              Sign out
+            </button>
+          )}
+        </nav>
       </header>
 
+      {page === 'holdings' && <HoldingsPage theme={theme} onOpenAnalysis={openAnalysis} />}
+
+      {page === 'analyze' && (<>
       <form className="controls" onSubmit={onSubmit}>
         <input
           value={symbol}
@@ -114,7 +206,7 @@ export default function App() {
           spellCheck={false}
         />
         <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="History window">
-          {PRESETS.map((o) => (
+          {RANGE_PRESETS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
@@ -265,6 +357,7 @@ export default function App() {
         range={active?.range ?? {}}
         hasData={active != null && data != null}
       />
+      </>)}
     </div>
   )
 }

@@ -107,7 +107,11 @@ def build_outlook(
         "nearest_support": None if nearest_support is None else nearest_support["price"],
         "nearest_resistance": None if nearest_resistance is None else nearest_resistance["price"],
         "note": (
-            "Base rates from 4y x 35 NSE symbols conditioned on today's state; "
-            "these are tendencies, not predictions. Trade the levels, not the forecast."
+            "How to read this: we found every day in the past 4 years (across 35 NSE stocks) "
+            "that looked like today — same market trend, stock trend, sector standing and RSI "
+            "zone — and counted what happened next. \"57% closed higher\" means 57 of every 100 "
+            "similar days ended up — a lean, not a forecast. No situation in this data ever "
+            "predicted a week ahead better than ~58 in 100, so let the support/resistance "
+            "levels decide your entries, not this card."
         ),
     }

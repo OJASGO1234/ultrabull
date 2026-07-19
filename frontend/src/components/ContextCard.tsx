@@ -97,13 +97,16 @@ export function ContextCard({ context: c, timing: tm, theme: t }: Props) {
       label: 'Market breadth',
       value: c.breadth == null ? '—' : `${Math.round(c.breadth * 100)}%`,
       color: c.breadth == null ? undefined : c.breadth >= 0.55 ? t.deltaUpText : c.breadth <= 0.35 ? t.deltaDownText : undefined,
-      note: 'universe above own 50DMA',
+      note: 'share of stocks above their own 50-day average — is the rally broad or carried by a few names?',
     },
     {
       label: 'Distribution days',
       value: c.dist_days == null ? '—' : `${Math.round(c.dist_days)} / 25d`,
       color: c.dist_days == null ? undefined : c.dist_days >= 5 ? t.critical : c.dist_days >= 4 ? t.warning : undefined,
-      note: c.dist_days != null && c.dist_days >= 5 ? 'institutional selling — longs gated off' : 'NIFTY down days on rising volume',
+      note:
+        c.dist_days != null && c.dist_days >= 5
+          ? 'index fell on rising volume 5+ times — big funds selling; new buys paused'
+          : 'days NIFTY fell on higher volume than the day before — a footprint of funds selling',
     },
   ]
 

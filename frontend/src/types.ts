@@ -190,8 +190,18 @@ export interface Advice {
     target1: number
     target2: number | null
     reward_risk: number | null
+    if_breakout: IfBreakout | null
   }
   note: string
+}
+
+/** Conditional path when the target sits at resistance: what changes if it clears. */
+export interface IfBreakout {
+  trigger: number | null
+  target: number | null
+  target_basis: string | null
+  stop_after: number | null
+  note: string | null
 }
 
 export interface FyPoint {

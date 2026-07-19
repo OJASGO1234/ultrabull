@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { RangeQuery } from '../api'
+import { authFetch } from '../auth'
 
 interface ChatMsg {
   role: 'user' | 'assistant'
@@ -45,7 +46,7 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/chat', {
+      const res = await authFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

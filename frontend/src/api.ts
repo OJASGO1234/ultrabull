@@ -1,3 +1,4 @@
+import { authFetch } from './auth'
 import type { AnalysisResponse } from './types'
 
 export interface RangeQuery {
@@ -6,7 +7,18 @@ export interface RangeQuery {
   end?: string // YYYY-MM-DD
 }
 
-export async function fetchAnalysis(symbol: string, range: RangeQuery): Promise<AnalysisResponse> {
+/** History-window presets shared by the analysis tab and the holdings Analyse controls. */
+export const RANGE_PRESETS = [
+  { value: '0.25', label: '3 months' },
+  { value: '0.5', label: '6 months' },
+  { value: '1', label: '1 year' },
+  { value: '2', label: '2 years' },
+  { value: '3', label: '3 years' },
+  { value: '5', label: '5 years' },
+  { value: 'custom', label: 'Custom range…' },
+]
+
+export function rangeToQuery(range: RangeQuery): URLSearchParams {
   const q = new URLSearchParams()
   if (range.start) {
     q.set('start', range.start)
@@ -14,7 +26,12 @@ export async function fetchAnalysis(symbol: string, range: RangeQuery): Promise<
   } else {
     q.set('years', String(range.years ?? 0.5))
   }
-  const res = await fetch(`/api/analyze/${encodeURIComponent(symbol)}?${q}`)
+  return q
+}
+
+export async function fetchAnalysis(symbol: string, range: RangeQuery): Promise<AnalysisResponse> {
+  const q = rangeToQuery(range)
+  const res = await authFetch(`/api/analyze/${encodeURIComponent(symbol)}?${q}`)
   if (!res.ok) {
     let detail = `Request failed (${res.status})`
     try {

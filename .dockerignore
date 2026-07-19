@@ -1,0 +1,13 @@
+.git
+venv
+.env
+*.pem
+data_cache
+frontend
+docs
+.chainlit
+__pycache__
+**/__pycache__
+*.pyc
+.dockerignore
+Dockerfile

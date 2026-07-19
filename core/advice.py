@@ -83,21 +83,24 @@ def build_advice(
     if dist_days is not None:
         if dist_days >= 5:
             factors.append(_factor("Distribution days", -1.5,
-                                   f"{int(dist_days)} NIFTY distribution days in 25 sessions — institutional selling; the engine gates fresh longs off here"))
+                                   f"NIFTY fell on higher volume than the day before {int(dist_days)} times in the last "
+                                   f"25 sessions — the footprint of large funds selling (they can't exit quietly). At 5+, "
+                                   f"our 4y test showed new buying does badly, so the system pauses fresh buys until it clears"))
         elif dist_days >= 4:
             factors.append(_factor("Distribution days", -0.5,
-                                   f"{int(dist_days)}/25 sessions — one more and fresh longs are gated off"))
+                                   f"{int(dist_days)} of the last 25 sessions saw the index fall on rising volume "
+                                   f"(a sign of big-fund selling) — one more and the system pauses new buys"))
         else:
             factors.append(_factor("Distribution days", 0.0,
-                                   f"{int(dist_days)}/25 sessions — no distribution warning"))
+                                   f"only {int(dist_days)} index-falls-on-rising-volume in 25 sessions — no sign of heavy fund selling"))
     if breadth is not None:
         factors.append(_factor(
             "Market breadth",
             0.5 if breadth >= 0.55 else (-0.5 if breadth <= 0.35 else 0.0),
-            f"{breadth:.0%} of universe above its 50DMA — "
-            + ("broad participation" if breadth >= 0.55
-               else "narrow, index carried by few names" if breadth <= 0.35
-               else "middling")))
+            f"{breadth:.0%} of the stocks we track are above their own 50-day average — "
+            + ("the rally has broad participation, not just a few heavyweights" if breadth >= 0.55
+               else "the index is being held up by a handful of big names, which is fragile" if breadth <= 0.35
+               else "neither broad nor narrow")))
 
     # --- momentum ---
     if rsi > 70:
@@ -170,8 +173,30 @@ def build_advice(
     score = float(sum(f["score"] for f in factors if f["score"] > -90))
 
     # --- verdicts ---
+    # Entry-price quality vetoes: a high score means the BACKDROP is right, but
+    # buying overbought into resistance (or against a hit distribution-day
+    # ceiling) tested negative — the fresh-money verdict must not contradict
+    # the very factors that flagged it (or the holding-side trim call).
+    pressed = res is not None and (res["price"] - close) / atr <= 0.75
+    overbought = rsi > 70
+    dist_pause = dist_days is not None and dist_days >= 5
+
     if blackout:
         fresh = {"verdict": "WAIT", "reason": "earnings blackout — re-assess after results"}
+    elif dist_pause and score >= 1.5:
+        fresh = {"verdict": "WAIT",
+                 "reason": "the stock looks fine, but the index hit the distribution-day ceiling — "
+                           "the engine pauses ALL fresh buys until that selling pressure clears"}
+    elif score >= 3.5 and (overbought or pressed):
+        why = []
+        if overbought:
+            why.append(f"RSI {rsi:.0f} is overbought (fresh longs here tested negative)")
+        if pressed:
+            why.append(f"price is pressed against resistance ₹{res['price']:.0f}")
+        fresh = {"verdict": "BUY_ON_DIP",
+                 "reason": "strong backdrop, but " + " and ".join(why)
+                           + (f" — better entry near support ₹{sup['price']:.0f}" if sup
+                              else " — wait for a pullback")}
     elif score >= 3.5:
         fresh = {"verdict": "BUY", "reason": "regime, momentum and level position all align"}
     elif score >= 1.5:
@@ -208,6 +233,27 @@ def build_advice(
         "target2": round(res2["price"], 2) if res2 else None,
         "reward_risk": round(rr, 2) if rr else None,
     }
+
+    # The target is where the KNOWN math ends, not a ceiling — spell out the
+    # conditional path so a target sitting at resistance reads sequentially:
+    # clear the level, the level becomes support, the objective moves up.
+    if res is not None:
+        jump = round(res2["price"], 2) if res2 else round(res["price"] + 2.0 * atr, 2)
+        stop_after = round(res["price"] - 0.5 * atr, 2)
+        plan["if_breakout"] = {
+            "trigger": round(res["price"], 2),
+            "target": jump,
+            "target_basis": "next mapped resistance" if res2
+                            else "2×ATR extension (no higher level on the map)",
+            "stop_after": stop_after,
+            "note": (f"a close above ₹{res['price']:.0f} flips that level into support — raise the stop to "
+                     f"₹{stop_after:.0f} and the objective moves to ₹{jump:.0f} "
+                     + ("(the next mapped resistance)" if res2
+                        else "(a 2×ATR extension; no higher level on the map)")
+                     + "; re-analyse after that close"),
+        }
+    else:
+        plan["if_breakout"] = None
 
     return {
         "as_of": str(df_ohlcv.index[-1].date()),

@@ -89,6 +89,9 @@ export function AdviceCard({ advice: a, outlook, theme: t }: Props) {
             {a.plan.reward_risk != null && <> · {a.plan.reward_risk}:1</>}
           </div>
           <div className="tile-note">{a.plan.stop_basis}</div>
+          {a.plan.if_breakout?.note && (
+            <div className="tile-note">If it breaks: {a.plan.if_breakout.note}</div>
+          )}
         </div>
       </div>
 

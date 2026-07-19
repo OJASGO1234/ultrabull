@@ -21,6 +21,7 @@ load_dotenv(os.path.join(ROOT, ".env"))
 import copy
 import json
 import math
+import sqlite3
 import threading
 import time
 from datetime import date as _date_cls
@@ -29,8 +30,9 @@ import anthropic
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from stock_explorer import load_data, compute_indicators, load_events
@@ -57,6 +59,9 @@ from sim.engine import simulate
 from sim.metrics import summarize, by_tag, audit_exits
 from pipeline import cfg as PIPELINE_BASE_CFG
 
+from .sre import router as sre_router
+from .auth import make_token, verify_token, verify_user
+
 app = FastAPI(title="Ultrabull API")
 
 app.add_middleware(
@@ -65,6 +70,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(sre_router)
+
+# ---------- auth (enforced only when ULTRABULL_AUTH=1 — i.e. in production) ----------
+
+AUTH_ENABLED = os.getenv("ULTRABULL_AUTH", "0") == "1"
+AUTH_PUBLIC_PATHS = {"/api/health", "/api/auth/login"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if AUTH_ENABLED and path.startswith("/api") and path not in AUTH_PUBLIC_PATHS:
+        authz = request.headers.get("authorization", "")
+        token = authz[7:] if authz.lower().startswith("bearer ") else ""
+        user = verify_token(token)
+        if user is None:
+            return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+        request.state.user = user
+    return await call_next(request)
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    if not verify_user(req.username, req.password):
+        time.sleep(0.5)  # blunt brute-force throttle
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token, exp = make_token(req.username.strip().lower())
+    return {"token": token, "username": req.username.strip().lower(), "expires_at": exp}
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    """Who am I / is auth even on. The frontend calls this at boot to decide
+    whether to show the login screen."""
+    return {"auth_required": AUTH_ENABLED, "username": getattr(request.state, "user", None)}
 
 
 def build_cfg() -> dict:
@@ -200,6 +246,9 @@ def _compute_timing(symbol: str, events: pd.DataFrame | None, cfg: dict) -> dict
         "last_dividend": None,
         "last_split": None,
         "earnings_data_stale": False,
+        # deterministic projection from the company's own reporting cadence,
+        # used when no confirmed future date exists ("heuristics compute facts")
+        "expected_results_window": None,
     }
 
     # Past events from the tidy frame (already clipped to the price window)
@@ -234,6 +283,23 @@ def _compute_timing(symbol: str, events: pd.DataFrame | None, cfg: dict) -> dict
                 out["next_earnings"] = _date(nxt)
                 out["trading_days_to_next_earnings"] = tdays
                 out["in_earnings_blackout"] = tdays <= blackout_before
+            elif len(past) >= 3:
+                # No confirmed date — project one from the historical cadence
+                # (Indian companies report ~quarterly; use THIS company's median
+                # gap, not a blanket 91 days). Skip when Yahoo's coverage is so
+                # stale the projection would be guesswork.
+                gaps = [(past[i + 1] - past[i]).days for i in range(len(past) - 1)]
+                med = float(np.median([g for g in gaps if 30 <= g <= 200] or gaps))
+                if 30 <= med <= 200 and (today - past[-1]).days <= 400:
+                    expected = past[-1] + pd.Timedelta(days=med)
+                    while expected < today - pd.Timedelta(days=14):
+                        expected += pd.Timedelta(days=med)  # roll to the next cycle
+                    out["expected_results_window"] = {
+                        "start": _date(expected - pd.Timedelta(days=7)),
+                        "end": _date(expected + pd.Timedelta(days=7)),
+                        "basis": f"projected from a median {med:.0f}-day gap across "
+                                 f"{len(past)} past results (not an announced date)",
+                    }
     except Exception:
         pass
 
@@ -617,18 +683,19 @@ def _cache_put(key: tuple[str, float], result: dict) -> None:
 
 
 def cached_analysis(symbol: str, years: float, start: str | None = None,
-                    end: str | None = None) -> tuple[dict, bool]:
+                    end: str | None = None, force: bool = False) -> tuple[dict, bool]:
     """Return (result, was_cached). Concurrent misses on the same key run the
-    pipeline once; the rest wait on the per-key lock and read the fresh entry."""
+    pipeline once; the rest wait on the per-key lock and read the fresh entry.
+    force=True skips cache reads (still writes) — a guaranteed recompute."""
     key = (symbol, years, start or "", end or "")
-    cached = _cache_get(key)
+    cached = None if force else _cache_get(key)
     if cached is not None:
         return cached, True
 
     with _cache_lock:
         flight = _inflight.setdefault(key, threading.Lock())
     with flight:
-        cached = _cache_get(key)  # a racer may have filled it while we waited
+        cached = None if force else _cache_get(key)  # a racer may have filled it while we waited
         if cached is not None:
             return cached, True
         try:
@@ -672,11 +739,21 @@ PEAD drift on NSE large caps.
 data; day-ahead direction is a coin flip; edges are non-stationary (the walk-forward \
 showed the best in-sample patterns degrading most recently).
 
-Style: concise, numerate, plain English. The user does their own fundamental research — \
-your job is the technical/timing side. You are not a financial adviser and must not \
-promise outcomes; frame everything as evidence and risk, and say "the data doesn't \
-support that" when it doesn't. Refuse requests to place orders — this app analyzes, the \
-user decides and executes.
+Style — write for a smart person who is NOT a market professional:
+- Plain English first. Any term of art (distribution day, base rate, relative strength, \
+breadth, drawdown, reward:risk, divergence, t-stat) gets a one-line meaning in brackets \
+the FIRST time you use it, e.g. "5 distribution days (days the index fell on higher \
+volume than the day before — the footprint of large funds selling)".
+- Say "54 of every 100 similar days closed higher" rather than "p_up 54%". Never expose \
+raw field names or state keys (p_up, rs_20, mkt=dn) — translate them.
+- Explain WHY each factor matters in one clause, not just its value: "lagging its \
+sector by 10% (money is rotating into its peers, not this stock)".
+- Match length to the question: quick question → one short paragraph; analysis request \
+→ structure with headings and a table.
+The user does their own fundamental research — your job is the technical/timing side. \
+You are not a financial adviser and must not promise outcomes; frame everything as \
+evidence and risk, and say "the data doesn't support that" when it doesn't. Refuse \
+requests to place orders — this app analyzes, the user decides and executes.
 
 You have a `test_rule` tool that backtests rule ideas against the project's 4y NSE \
 universe with the same event-study methodology. When the user proposes a testable rule \
@@ -837,6 +914,316 @@ def idea(req: IdeaRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+def _compact_signal(result: dict) -> dict:
+    """Row-sized digest of a full analysis for the holdings table: verdicts,
+    plan (stop/target), nearest support/resistance with distance, breakout
+    state, and the 1-week base rate."""
+    advice = result.get("advice") or {}
+    plan = advice.get("plan") or {}
+    close = advice.get("close")
+    if close is None and result.get("ohlcv"):
+        close = result["ohlcv"][-1]["close"]
+
+    levels = result.get("levels") or []
+    sup = res = None
+    if close is not None:
+        below = [lv for lv in levels if lv["kind"] == "support" and lv["price"] <= close]
+        above = [lv for lv in levels if lv["kind"] == "resistance" and lv["price"] >= close]
+        sup = max(below, key=lambda lv: lv["price"], default=None)
+        res = min(above, key=lambda lv: lv["price"], default=None)
+
+    def _level(lv):
+        if lv is None:
+            return None
+        return {"price": _num(lv["price"]), "distance_pct": _num(lv.get("distance_pct")),
+                "touches": lv.get("touches"), "strength": _num(lv.get("strength"))}
+
+    # most recent qualified breakout-family detection within ~3 weeks of the last bar
+    recent_breakout = None
+    try:
+        last_d = _date_cls.fromisoformat(result["last_date"])
+        for d in reversed(result.get("detections") or []):
+            if not d.get("qualified"):
+                continue
+            if "breakout" not in str(d.get("pattern", "")).lower():
+                continue
+            if (last_d - _date_cls.fromisoformat(d["date"])).days <= 21:
+                recent_breakout = {"pattern": d["pattern"], "date": d["date"],
+                                   "english": d.get("english")}
+            break
+    except (ValueError, KeyError):
+        pass
+
+    factors = [f for f in (advice.get("factors") or []) if abs(f.get("score") or 0) > 0]
+    factors.sort(key=lambda f: -abs(f.get("score") or 0))
+    h1w = ((result.get("outlook") or {}).get("horizons") or {}).get("1w") or {}
+
+    return {
+        "symbol": result["symbol"],
+        "last_date": result.get("last_date"),
+        "close": _num(close),
+        "score": _num(advice.get("score")),
+        "fresh": advice.get("fresh"),
+        "holding": advice.get("holding"),
+        "stop": _num(plan.get("stop")),
+        "stop_basis": plan.get("stop_basis"),
+        "target": _num(plan.get("target1")),
+        "target2": _num(plan.get("target2")),
+        "reward_risk": _num(plan.get("reward_risk")),
+        "if_breakout": (lambda ib: None if not ib else {
+            "trigger": _num(ib.get("trigger")),
+            "target": _num(ib.get("target")),
+            "target_basis": ib.get("target_basis"),
+            "stop_after": _num(ib.get("stop_after")),
+            "note": ib.get("note"),
+        })(plan.get("if_breakout")),
+        "entry_zone": [_num(plan.get("entry_zone_low")), _num(plan.get("entry_zone_high"))],
+        "support": _level(sup),
+        "resistance": _level(res),
+        "breakout": {
+            "above_all_resistance": bool(close is not None and res is None and levels),
+            "recent_breakout": recent_breakout,
+        },
+        "factors": factors[:4],
+        "outlook_1w": {"p_up": _num(h1w.get("p_up")), "verdict": h1w.get("verdict"),
+                       "n": h1w.get("n"), "fallback": h1w.get("fallback")},
+        "in_earnings_blackout": bool((result.get("timing") or {}).get("in_earnings_blackout")),
+        "next_earnings": (result.get("timing") or {}).get("next_earnings"),
+        "expected_results_window": (result.get("timing") or {}).get("expected_results_window"),
+        "results_overdue": bool((result.get("timing") or {}).get("results_overdue")),
+        "market_regime": (result.get("context") or {}).get("market_regime"),
+    }
+
+
+# ---------- signal snapshot store (SQLite, survives restarts) ----------
+# The TTL cache above holds full payloads for minutes; this holds the compact
+# per-symbol digest as-of its analysis date, so the holdings table renders the
+# last known verdicts instantly and only recomputes when the user asks.
+
+SIGNAL_DB = os.path.join(ROOT, "data_cache", "signal_snapshots.db")
+
+
+def _signal_db() -> sqlite3.Connection:
+    os.makedirs(os.path.dirname(SIGNAL_DB), exist_ok=True)
+    conn = sqlite3.connect(SIGNAL_DB, timeout=10.0)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS signal_snapshots ("
+        "  symbol TEXT PRIMARY KEY,"
+        "  stored_at TEXT NOT NULL,"
+        "  payload TEXT NOT NULL)"
+    )
+    return conn
+
+
+def _snapshot_put(symbol: str, snap: dict) -> str:
+    stored_at = pd.Timestamp.now().isoformat(timespec="seconds")
+    conn = _signal_db()
+    try:
+        with conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO signal_snapshots (symbol, stored_at, payload) VALUES (?, ?, ?)",
+                (symbol, stored_at, json.dumps(snap)),
+            )
+    finally:
+        conn.close()
+    return stored_at
+
+
+@app.get("/api/signal/{symbol}")
+def signal(
+    symbol: str,
+    years: float = Query(1.0, gt=0.0, le=10.0),
+    start: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    force: bool = Query(False, description="Skip the TTL cache — guaranteed fresh recompute"),
+):
+    """Compute (TTL-cached unless force=1) the analysis for one symbol, persist
+    the compact digest to the snapshot store, and return it."""
+    symbol = symbol.strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=422, detail="Empty symbol")
+    if start and end and start >= end:
+        raise HTTPException(status_code=422, detail="start must be before end")
+    try:
+        result, was_cached = cached_analysis(symbol, years, start, end, force=force)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    snap = _compact_signal(result)
+    snap["range"] = {"years": None if start else years, "start": start, "end": end}
+    stored_at = _snapshot_put(symbol, snap)
+    return {**snap, "stored_at": stored_at, "cached": was_cached}
+
+
+@app.get("/api/signals")
+def signals(symbols: str = Query(..., description="Comma-separated Yahoo symbols")):
+    """Read-only batch fetch of stored snapshots — never computes anything.
+    Missing symbols simply aren't in the response."""
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if not syms:
+        return {"signals": {}}
+    conn = _signal_db()
+    try:
+        placeholders = ",".join("?" * len(syms))
+        rows = conn.execute(
+            f"SELECT symbol, stored_at, payload FROM signal_snapshots WHERE symbol IN ({placeholders})",
+            syms,
+        ).fetchall()
+    finally:
+        conn.close()
+    return {"signals": {sym: {**json.loads(payload), "stored_at": stored_at}
+                        for sym, stored_at, payload in rows}}
+
+
+# ---------- Claude holding takes (on-demand, persisted) ----------
+# Two tiers: "quick" reads the analysis payload + position only; "deep" also
+# enables the server-side web search tool (analyst estimates, announced result
+# dates, corporate actions). Both persist to SQLite like signal snapshots.
+
+TAKE_INSTRUCTIONS = (
+    "The user holds a position in this stock and wants your read on it. Answer in "
+    "under ~300 words of markdown with three short sections: (1) **Verdict** for "
+    "their existing position (hold / trim / exit / add, with conviction), (2) **Why** "
+    "— the strongest evidence for and against, grounded in the payload numbers, "
+    "(3) **What would change my mind** — specific price levels or upcoming dates to "
+    "watch. Weigh their entry price only for tax/psychology framing; levels come "
+    "from the chart, not their cost basis."
+)
+
+DEEP_INSTRUCTIONS = (
+    "\n\nAdditionally, use web search before concluding: find (a) the announced or "
+    "expected date of the company's next quarterly results (BSE/NSE announcements), "
+    "(b) analyst estimates, price targets, or consensus views if any exist for this "
+    "company, and (c) recent material news, corporate actions, AGM notices, or "
+    "shareholding/pledging developments. Cite each finding with its source and date. "
+    "Reconcile the research with the technical picture — say explicitly when they "
+    "disagree. If the company is too small for analyst coverage, say so plainly."
+)
+
+WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
+
+TAKES_DB = os.path.join(ROOT, "data_cache", "claude_takes.db")
+
+
+def _takes_db() -> sqlite3.Connection:
+    os.makedirs(os.path.dirname(TAKES_DB), exist_ok=True)
+    conn = sqlite3.connect(TAKES_DB, timeout=10.0)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS claude_takes ("
+        "  symbol TEXT NOT NULL,"
+        "  tier TEXT NOT NULL,"
+        "  stored_at TEXT NOT NULL,"
+        "  payload TEXT NOT NULL,"
+        "  PRIMARY KEY (symbol, tier))"
+    )
+    return conn
+
+
+class TakeRequest(BaseModel):
+    symbol: str
+    quantity: float | None = None
+    avg_price: float | None = None
+    deep: bool = False
+    years: float = 1.0
+
+
+@app.post("/api/claude/take")
+def claude_take(req: TakeRequest):
+    symbol = req.symbol.strip().upper()
+    if not symbol:
+        raise HTTPException(status_code=422, detail="Empty symbol")
+    try:
+        result, _ = cached_analysis(symbol, req.years)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    position = ""
+    if req.quantity is not None and req.avg_price is not None:
+        position = (f"I currently hold {req.quantity:g} shares of {symbol} at an "
+                    f"average buy price of ₹{req.avg_price:.2f}. ")
+    prompt = (position + "Give me your read on this position."
+              if position else f"Assess {symbol} as a holding right now.")
+
+    system_blocks = [
+        {"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}},
+        {"type": "text",
+         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result)}"},
+        {"type": "text",
+         "text": TAKE_INSTRUCTIONS + (DEEP_INSTRUCTIONS if req.deep else "")},
+    ]
+
+    client = anthropic.Anthropic()
+    msgs = [{"role": "user", "content": prompt}]
+    try:
+        # server-side web search can pause the turn; re-send to resume
+        for _ in range(6):
+            response = client.messages.create(
+                model=CHAT_MODEL,
+                max_tokens=8192 if req.deep else 4096,
+                thinking={"type": "adaptive"},
+                system=system_blocks,
+                tools=[WEB_SEARCH_TOOL] if req.deep else [],
+                messages=msgs,
+            )
+            if response.stop_reason != "pause_turn":
+                break
+            msgs = [msgs[0], {"role": "assistant", "content": response.content}]
+    except (anthropic.AuthenticationError, TypeError):
+        raise HTTPException(
+            status_code=503,
+            detail="Claude take needs an Anthropic API key: set ANTHROPIC_API_KEY in "
+                   "the server environment and restart the API.",
+        )
+    except anthropic.RateLimitError:
+        raise HTTPException(status_code=429, detail="Rate limited by the Claude API — try again shortly.")
+    except anthropic.APIStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Claude API error ({e.status_code}): {e.message}")
+    except anthropic.APIConnectionError:
+        raise HTTPException(status_code=503, detail="Could not reach the Claude API — check network.")
+
+    text = "".join(b.text for b in response.content if b.type == "text")
+    take = {
+        "symbol": symbol,
+        "tier": "deep" if req.deep else "quick",
+        "text": text,
+        "model": response.model,
+        "position": ({"quantity": req.quantity, "avg_price": req.avg_price}
+                     if position else None),
+        "as_of": result.get("last_date"),
+    }
+    stored_at = pd.Timestamp.now().isoformat(timespec="seconds")
+    conn = _takes_db()
+    try:
+        with conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO claude_takes (symbol, tier, stored_at, payload) VALUES (?, ?, ?, ?)",
+                (symbol, take["tier"], stored_at, json.dumps(take)),
+            )
+    finally:
+        conn.close()
+    return {**take, "stored_at": stored_at}
+
+
+@app.get("/api/claude/takes")
+def claude_takes(symbols: str = Query(..., description="Comma-separated Yahoo symbols")):
+    """Read-only batch fetch of stored takes — never calls Claude."""
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if not syms:
+        return {"takes": {}}
+    conn = _takes_db()
+    try:
+        placeholders = ",".join("?" * len(syms))
+        rows = conn.execute(
+            f"SELECT symbol, tier, stored_at, payload FROM claude_takes WHERE symbol IN ({placeholders})",
+            syms,
+        ).fetchall()
+    finally:
+        conn.close()
+    out: dict[str, dict] = {}
+    for sym, tier, stored_at, payload in rows:
+        out.setdefault(sym, {})[tier] = {**json.loads(payload), "stored_at": stored_at}
+    return {"takes": out}
 
 
 @app.get("/api/analyze/{symbol}")
