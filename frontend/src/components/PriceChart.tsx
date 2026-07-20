@@ -29,6 +29,7 @@ interface Hover {
 interface Layers {
   indicators: boolean
   levels: boolean
+  detections: boolean
   trades: boolean
   labels: boolean
   events: boolean
@@ -38,6 +39,7 @@ interface Layers {
 const TOGGLES: { key: keyof Layers; label: string }[] = [
   { key: 'indicators', label: 'MA / BB' },
   { key: 'levels', label: 'S/R levels' },
+  { key: 'detections', label: 'Signals' },
   { key: 'trades', label: 'Trades' },
   { key: 'labels', label: 'Labels' },
   { key: 'events', label: 'Events' },
@@ -53,6 +55,7 @@ export function PriceChart({ data, theme: t }: Props) {
   const [layers, setLayers] = useState<Layers>(() => ({
     indicators: true,
     levels: true,
+    detections: true,
     trades: true,
     labels: data.bars <= 300,
     events: data.bars <= 600,
@@ -165,6 +168,26 @@ export function PriceChart({ data, theme: t }: Props) {
       }
     }
 
+    // Qualified detections (the buy/sell signal sightings): squares under/over
+    // the bar. Days where the backtest actually entered a trade are skipped
+    // when the trade layer is on — the entry arrow already marks those.
+    if (layers.detections) {
+      const barTimes = new Set(data.ohlcv.map((r) => r.time))
+      const tradeEntryDates = new Set(data.trades.map((tr) => tr.entry_date).filter(Boolean))
+      for (const d of data.detections) {
+        if (!d.qualified || !barTimes.has(d.date)) continue
+        if (layers.trades && tradeEntryDates.has(d.date)) continue
+        const bullish = d.direction !== 'bearish'
+        markers.push({
+          time: d.date as Time,
+          position: bullish ? 'belowBar' : 'aboveBar',
+          shape: 'square',
+          color: bullish ? t.good : t.critical,
+          text: layers.labels ? d.pattern : undefined,
+        })
+      }
+    }
+
     // Trade markers: entries carry the pattern tag, exits the exit reason.
     if (layers.trades) {
       for (const tr of data.trades) {
@@ -235,6 +258,12 @@ export function PriceChart({ data, theme: t }: Props) {
   ]
 
   const legendBottom: LegendItem[] = [
+    ...(layers.detections
+      ? [
+          { color: t.good, label: '■ Bullish signal (qualified)', shape: 'square' as const },
+          { color: t.critical, label: '■ Bearish signal (qualified)', shape: 'square' as const },
+        ]
+      : []),
     ...(layers.trades
       ? [
           { color: t.blue, label: '▲ Entry long', shape: 'dot' as const },
