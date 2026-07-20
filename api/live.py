@@ -72,6 +72,30 @@ def _split(symbol: str) -> tuple[str, str] | None:
     return None
 
 
+def ltp_map(symbols: list[str]) -> dict[str, float]:
+    """{yahoo_symbol: last_price} for the given symbols via one Groww batch call.
+    Best-effort — returns what it can; empty on failure (callers mark-to-market
+    with their last known price)."""
+    pairs = {s: _split(s) for s in symbols}
+    exch = tuple(f"{p[0]}_{p[1]}" for p in pairs.values() if p)
+    if not exch:
+        return {}
+    try:
+        try:
+            ltp = _get_client().get_ltp(exchange_trading_symbols=exch, segment="CASH")
+        except Exception:
+            ltp = _get_client(force_new=True).get_ltp(exchange_trading_symbols=exch, segment="CASH")
+    except Exception:
+        return {}
+    out: dict[str, float] = {}
+    for s, p in pairs.items():
+        if p:
+            v = ltp.get(f"{p[0]}_{p[1]}")
+            if v is not None:
+                out[s] = float(v)
+    return out
+
+
 @router.get("")
 def live(symbols: str = Query(..., description="Comma-separated Yahoo symbols")):
     syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:40]

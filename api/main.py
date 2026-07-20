@@ -63,6 +63,7 @@ from pipeline import cfg as PIPELINE_BASE_CFG
 from .sre import router as sre_router
 from .auth import make_token, verify_token, verify_user
 from .live import router as live_router, groww_router
+from .paper import router as paper_router
 
 app = FastAPI(title="Ultrabull API")
 
@@ -76,6 +77,7 @@ app.add_middleware(
 app.include_router(sre_router)
 app.include_router(live_router)
 app.include_router(groww_router)
+app.include_router(paper_router)
 
 # ---------- auth (enforced only when ULTRABULL_AUTH=1 — i.e. in production) ----------
 

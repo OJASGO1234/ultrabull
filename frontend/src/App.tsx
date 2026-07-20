@@ -18,17 +18,18 @@ import { FundamentalsCard } from './components/FundamentalsCard'
 import { KeyIndicators } from './components/KeyIndicators'
 import { HoldingsPage } from './components/HoldingsPage'
 import { HealthPage } from './components/HealthPage'
+import { PaperPage } from './components/PaperPage'
 import { Login } from './components/Login'
 import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
 import { useLiveQuotes } from './live'
 
-type Page = 'analyze' | 'holdings' | 'health'
+type Page = 'analyze' | 'holdings' | 'health' | 'paper'
 
 export default function App() {
   const theme = useTheme()
   const [page, setPage] = useState<Page>(() => {
     const p = new URLSearchParams(window.location.search).get('page')
-    return p === 'holdings' || p === 'health' ? p : 'analyze'
+    return p === 'holdings' || p === 'health' || p === 'paper' ? p : 'analyze'
   })
   const [wide, setWide] = useState(() => localStorage.getItem('ui.wide') === '1')
   const [authState, setAuthState] = useState<'checking' | 'login' | 'ok'>('checking')
@@ -179,6 +180,13 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={page === 'paper' ? 'tab tab-on' : 'tab'}
+            onClick={() => switchPage('paper')}
+          >
+            Paper
+          </button>
+          <button
+            type="button"
             className={page === 'health' ? 'tab tab-on' : 'tab'}
             onClick={() => switchPage('health')}
           >
@@ -210,6 +218,8 @@ export default function App() {
       {page === 'holdings' && <HoldingsPage theme={theme} onOpenAnalysis={openAnalysis} />}
 
       {page === 'health' && <HealthPage theme={theme} />}
+
+      {page === 'paper' && <PaperPage theme={theme} />}
 
       {page === 'analyze' && (<>
       <form className="controls" onSubmit={onSubmit}>

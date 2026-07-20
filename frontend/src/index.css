@@ -1087,3 +1087,22 @@ tbody tr:last-child td {
 .calib-table td {
   padding: 4px 12px 4px 0;
 }
+
+/* Paper trading */
+.paper-trade input { flex: 0 1 130px; min-width: 90px; }
+.paper-cfg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.paper-cfg input {
+  width: 110px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: 1px solid var(--baseline);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+}
