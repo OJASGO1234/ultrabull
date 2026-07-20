@@ -16,8 +16,14 @@ import os
 import numpy as np
 import pandas as pd
 
-_TABLE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state_baserates.json")
+_CORE_TABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state_baserates.json")
+_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_cache")
+_DATA_TABLE = os.path.join(_DATA_DIR, "state_baserates.json")      # rebuilt (current data)
+_CAL_PATH = os.path.join(_DATA_DIR, "calibration.json")            # fitted shrink factors
 _table_cache: dict | None = None
+_table_mtime: float = 0.0
+_cal_cache: dict | None = None
+_cal_mtime: float = 0.0
 
 UP_THRESHOLD = 0.55
 DOWN_THRESHOLD = 0.45
@@ -25,11 +31,44 @@ MIN_N = 150  # below this the state sample is too thin; fall back to _all
 
 
 def _load_table() -> dict:
-    global _table_cache
-    if _table_cache is None:
-        with open(_TABLE_PATH) as f:
-            _table_cache = json.load(f)
+    """Prefer the rebuilt table on the volume (current data + calibrated);
+    fall back to the committed default. Reload if the file changed on disk."""
+    global _table_cache, _table_mtime
+    path = _DATA_TABLE if os.path.exists(_DATA_TABLE) else _CORE_TABLE
+    m = os.path.getmtime(path)
+    if _table_cache is None or _table_cache.get("_path") != path or m != _table_mtime:
+        with open(path) as f:
+            t = json.load(f)
+        t["_path"] = path
+        _table_cache, _table_mtime = t, m
     return _table_cache
+
+
+def _load_calibration() -> dict:
+    """Per-horizon shrink factors {name: {k: ...}}; empty if never fit."""
+    global _cal_cache, _cal_mtime
+    if not os.path.exists(_CAL_PATH):
+        return {}
+    m = os.path.getmtime(_CAL_PATH)
+    if _cal_cache is None or m != _cal_mtime:
+        try:
+            with open(_CAL_PATH) as f:
+                _cal_cache = json.load(f)
+            _cal_mtime = m
+        except Exception:
+            return {}
+    return _cal_cache or {}
+
+
+def _calibrate(p_up: float | None, name: str) -> tuple[float | None, float | None]:
+    """Return (calibrated_p, k). Shrinks toward 0.5 by the fitted factor so the
+    displayed probability matches what actually happens out-of-sample."""
+    if p_up is None:
+        return None, None
+    k = ((_load_calibration().get("horizons") or {}).get(name) or {}).get("k")
+    if k is None:
+        return p_up, None
+    return round(min(1.0, max(0.0, 0.5 + float(k) * (p_up - 0.5))), 4), float(k)
 
 
 def current_state(ind_df: pd.DataFrame, ctx: pd.DataFrame | None) -> dict:
@@ -80,9 +119,12 @@ def build_outlook(
         used_fallback = not st or (st.get("n") or 0) < MIN_N
         if used_fallback:
             st = fallback.get(name) or {}
-        p_up = st.get("p_up")
+        raw_p = st.get("p_up")
+        p_up, k = _calibrate(raw_p, name)  # honest, calibrated probability
         horizons[name] = {
             "p_up": p_up,
+            "raw_p_up": raw_p,
+            "calibrated": k is not None and k != 1.0,
             "median_move": st.get("median"),
             "typical_range": [st.get("q25"), st.get("q75")],
             "n": st.get("n"),

@@ -37,6 +37,11 @@ function HorizonTile({ name, h, theme: t }: { name: string; h: OutlookHorizon; t
       </div>
       <div className="tile-note">
         {h.p_up != null && `${Math.round(h.p_up * 100)}% of similar setups closed higher`}
+        {h.calibrated && h.raw_p_up != null && (
+          <span title="Calibrated: raw state frequency shrunk toward 50% by the fitted factor, because held-out data showed the raw rate is over-confident. See the Health tab.">
+            {' '}(calibrated from {Math.round(h.raw_p_up * 100)}%)
+          </span>
+        )}
         {h.median_move != null && ` · median ${fmt.pct(h.median_move, 1)}`}
         {lo != null && hi != null && ` · typical ${fmt.pct(lo, 1)} to ${fmt.pct(hi, 1)}`}
         {h.n != null && ` · n=${fmt.int(h.n)}`}

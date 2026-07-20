@@ -147,6 +147,8 @@ export interface Level {
 
 export interface OutlookHorizon {
   p_up: number | null
+  raw_p_up?: number | null
+  calibrated?: boolean
   median_move: number | null
   typical_range: [number | null, number | null]
   n: number | null

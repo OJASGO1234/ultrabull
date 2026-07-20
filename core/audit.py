@@ -280,10 +280,21 @@ def run_audit(cache_dir: str | None = None, held_symbols: list[str] | None = Non
     calib = pd.concat(calib_frames, ignore_index=True)
     events = pd.concat(event_frames, ignore_index=True)
 
+    # the fitted calibration currently applied to the outlook (if any)
+    cal_fit = None
+    cal_path = os.path.join(ROOT, "data_cache", "calibration.json")
+    if os.path.exists(cal_path):
+        try:
+            with open(cal_path) as f:
+                cal_fit = json.load(f)
+        except Exception:
+            cal_fit = None
+
     report = {
         "generated_at": None,  # stamped by caller (Date.now unavailable in some contexts)
         "symbols_used": len(used),
         "calibration": _calibration(calib),
+        "calibration_fit": cal_fit,
         "pattern_decay": _pattern_decay(events),
         "regime_gate": _regime_gate_decay(events, mkt_by_sym),
         "coverage": _coverage(held_symbols or []),

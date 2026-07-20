@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Theme } from '../theme'
 import {
-  applyOverride, fetchAudit, fetchSteward, runAudit, runSteward,
+  applyOverride, fetchAudit, fetchSteward, runAudit, runCalibrate, runSteward,
   type AuditReport, type CalibrationHorizon, type PatternRow, type PatternStatus, type Stat,
   type StewardAssessment,
 } from '../health'
@@ -244,6 +244,20 @@ export function HealthPage({ theme: t }: { theme: Theme }) {
     }
   }
 
+  const onRecalibrate = async () => {
+    setRunning(true)
+    setError(null)
+    try {
+      await runCalibrate()
+      await runAudit() // re-audit so the before/after reflects the new fit
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRunning(false)
+    }
+  }
+
   const decayed = report?.pattern_decay.patterns.filter((p) => p.status === 'decayed' || p.status === 'negative') ?? []
 
   return (
@@ -255,7 +269,12 @@ export function HealthPage({ theme: t }: { theme: Theme }) {
             {report && `audited ${report.generated_at.slice(0, 16).replace('T', ' ')} · ${report.symbols_used} symbols`}
             {'  '}
             <button type="button" className="btn-mini" disabled={running} onClick={onRun}>
-              {running ? 'Running (~1 min)…' : 'Re-run audit'}
+              {running ? 'Running…' : 'Re-run audit'}
+            </button>
+            {'  '}
+            <button type="button" className="btn-mini" disabled={running} onClick={onRecalibrate}
+              title="Rebuild base rates on current data + refit the calibration, then re-audit">
+              {running ? '…' : 'Recalibrate'}
             </button>
           </span>
         </div>
@@ -291,8 +310,47 @@ export function HealthPage({ theme: t }: { theme: Theme }) {
             </div>
           )}
 
+          {report.calibration_fit && (
+            <div className="card">
+              <h2>Applied calibration — the fix</h2>
+              <p className="chart-note">
+                The raw states are over-confident (below), so the outlook shrinks each probability toward 50% by a
+                fitted factor <b>k</b> (k=1 unchanged, k=0 pure coin-flip). Fit on held-out time to minimise error —
+                this is what the app now shows. Fit {report.calibration_fit.fit_at.slice(0, 10)}.
+              </p>
+              <div className="table-wrap">
+                <table className="calib-table">
+                  <thead>
+                    <tr>
+                      <th>Horizon</th><th className="num">Shrink k</th>
+                      <th className="num">ECE before → after</th><th className="num">Brier before → after</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(report.calibration_fit.horizons).map(([name, d]) => (
+                      <tr key={name}>
+                        <td>{HZ_LABEL[name] ?? name}</td>
+                        <td className="num">{d.k.toFixed(2)}{d.k <= 0.1 ? ' (≈ no edge)' : ''}</td>
+                        <td className="num">
+                          {d.raw_ece != null ? `${(d.raw_ece * 100).toFixed(1)}% → ${(d.calibrated_ece! * 100).toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="num">
+                          {d.raw_brier != null ? `${d.raw_brier} → ${d.calibrated_brier}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="chart-note">
+                k near 0 at the 1-day and 1-week horizons is the honest finding, not a bug: day- and week-ahead
+                direction is a coin flip in this data, so the outlook now says so.
+              </p>
+            </div>
+          )}
+
           <div className="card">
-            <h2>Calibration — is the outlook honest?</h2>
+            <h2>Calibration — raw states (the diagnostic)</h2>
             <p className="chart-note">
               When the app says "57 of 100 similar days closed higher," does that hold out-of-sample? Each row groups
               recent days by what the app <i>predicted</i> and shows what <i>actually</i> happened. A big positive gap =

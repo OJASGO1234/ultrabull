@@ -37,9 +37,20 @@ export interface PatternRow {
   status: PatternStatus
 }
 
+export interface CalibrationFitHorizon {
+  k: number
+  raw_brier?: number
+  calibrated_brier?: number
+  raw_ece?: number
+  calibrated_ece?: number
+  n_holdout: number
+  note?: string
+}
+
 export interface AuditReport {
   generated_at: string
   symbols_used: number
+  calibration_fit: { fit_at: string; method: string; horizons: Record<string, CalibrationFitHorizon> } | null
   calibration: {
     cutoff?: string
     max_date?: string
@@ -119,6 +130,12 @@ export async function applyOverride(pattern: string, disabled: boolean): Promise
     body: JSON.stringify({ pattern, disabled }),
   })
   if (!res.ok) throw new Error(`apply failed (${res.status})`)
+  return res.json()
+}
+
+export async function runCalibrate(): Promise<{ ok: boolean; states: number; bars: number; horizons: Record<string, number> }> {
+  const res = await authFetch('/api/calibrate/run', { method: 'POST' })
+  if (!res.ok) throw new Error(`recalibrate failed (${res.status})`)
   return res.json()
 }
 

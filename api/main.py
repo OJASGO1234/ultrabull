@@ -1359,6 +1359,18 @@ def audit_run():
                         if p["status"] in ("decayed", "negative")]}
 
 
+@app.post("/api/calibrate/run")
+def calibrate_run():
+    """Rebuild the base rates on current data and refit the outlook calibration.
+    Invalidates the analysis cache so calibrated verdicts show immediately."""
+    from calibrate import rebuild_and_calibrate
+    res = rebuild_and_calibrate(IDEA_CACHE_DIR)
+    with _cache_lock:
+        _cache.clear()
+    return {"ok": True, "states": res["states"], "bars": res["bars"],
+            "horizons": {h: d.get("k") for h, d in res["calibration"]["horizons"].items()}}
+
+
 # ---------- steward (Phase 1.5 — Claude reads the audit, proposes, human approves) ----------
 
 class OverrideRequest(BaseModel):
