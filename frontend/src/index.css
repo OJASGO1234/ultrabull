@@ -976,3 +976,26 @@ tbody tr:last-child td {
   opacity: 0.55;
   cursor: default;
 }
+
+/* Live quote indicator */
+.live-readout {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  animation: live-pulse 2s ease-in-out infinite;
+  vertical-align: 1px;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

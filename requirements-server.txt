@@ -14,3 +14,5 @@ anthropic==0.117.0
 python-dotenv==1.2.2
 requests==2.34.2
 pydantic==2.13.4
+growwapi==1.5.0
+PyOTP==2.10.0

@@ -12,6 +12,7 @@ import {
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from '../api'
 import type { AnalysisResponse } from '../types'
 import { PriceChart } from './PriceChart'
+import { useLiveQuotes } from '../live'
 
 type SignalState =
   | { status: 'idle' }
@@ -380,15 +381,17 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
   const holdings = data?.holdings ?? []
   const allSymbols = [...new Set(holdings.map((h) => h.yahoo_symbol).filter((s): s is string => !!s))]
   const anyRunning = allSymbols.some((s) => signals[s]?.status === 'loading')
+  const liveState = useLiveQuotes(allSymbols)
 
   const sig = (h: SreHolding): CompactSignal | null => {
     const st = h.yahoo_symbol ? signals[h.yahoo_symbol] : undefined
     return st?.status === 'ok' ? st.signal : null
   }
-  // Yahoo's EOD close (from the stored analysis) is the trusted price source —
-  // SRE's holdings LTP proved days-stale outside market hours. Broker quote is
-  // only a fallback for rows with no analysis yet. Qty/avg cost stay broker-side.
-  const effPrice = (h: SreHolding) => sig(h)?.close ?? h.ltp ?? null
+  // Price preference: live Groww tick > Yahoo EOD close (from the stored
+  // analysis) > SRE's holdings LTP (proved days-stale outside market hours).
+  // Qty/avg cost stay broker-side.
+  const liveFor = (h: SreHolding) => (h.yahoo_symbol ? liveState.quotes[h.yahoo_symbol] : undefined)
+  const effPrice = (h: SreHolding) => liveFor(h)?.ltp ?? sig(h)?.close ?? h.ltp ?? null
 
   const totals = holdings.reduce(
     (acc, h) => {
@@ -479,7 +482,14 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
       {holdings.length > 0 && (
         <div className="card">
           <div className="card-head">
-            <h2>Holdings ({holdings.length})</h2>
+            <h2>
+              Holdings ({holdings.length})
+              {liveState.live && (
+                <span className="live-readout" style={{ marginLeft: 10 }}>
+                  <span className="live-dot" /> {liveState.marketOpen ? 'live' : 'market closed'}
+                </span>
+              )}
+            </h2>
             <span className="hover-readout">
               invested ₹{fmt.compact(totals.invested)} · now ₹{fmt.compact(totals.current)} ·{' '}
               <span style={pnlColor(totalPnl)}>
@@ -542,13 +552,14 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                   const key = rowKey(h, i)
                   const st = h.yahoo_symbol ? signals[h.yahoo_symbol] : undefined
                   const s = st?.status === 'ok' ? st.signal : null
+                  const lq = liveFor(h)
                   const usingYahoo = s?.close != null
                   const price = effPrice(h)
                   const invested = h.invested ?? (h.quantity != null && h.avg_price != null ? h.quantity * h.avg_price : null)
-                  // P&L from the trusted price when we have it; broker's own number only as fallback
-                  const pnl = usingYahoo && h.quantity != null && invested != null
-                    ? h.quantity * s!.close! - invested
-                    : h.pnl ?? (h.quantity != null && price != null && invested != null ? h.quantity * price - invested : null)
+                  // P&L from the best price we have (live > yahoo > broker)
+                  const pnl = h.quantity != null && invested != null && price != null
+                    ? h.quantity * price - invested
+                    : h.pnl ?? null
                   const pnlPct = pnl != null && invested ? (100 * pnl) / invested : h.pnl_pct
                   const isOpen = expanded === key
                   const newsState = news[key]
@@ -576,8 +587,16 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                         <td className="num">{fmt.price(h.avg_price)}</td>
                         <td className="num">
                           {fmt.price(price)}
-                          {!usingYahoo && h.ltp != null && <span className="cell-sub"> broker</span>}
-                          {usingYahoo && priceConflict && (
+                          {lq?.day_change_pct != null && (
+                            <span
+                              className="cell-sub"
+                              style={{ color: lq.day_change_pct >= 0 ? t.deltaUpText : t.deltaDownText }}
+                            >
+                              {' '}{lq.day_change_pct >= 0 ? '+' : ''}{lq.day_change_pct.toFixed(1)}%
+                            </span>
+                          )}
+                          {!lq && !usingYahoo && h.ltp != null && <span className="cell-sub"> broker</span>}
+                          {!lq && usingYahoo && priceConflict && (
                             <span
                               title={`Broker (SRE) reports ₹${fmt.price(h.ltp)} — ${Math.abs(gapPct!).toFixed(1)}% away, likely a stale quote; showing Yahoo's ${s?.last_date} close instead`}
                             >
@@ -801,6 +820,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                       key={`${ch.data.symbol}:${ch.data.bars}:${ch.data.last_date}`}
                                       data={ch.data}
                                       theme={t}
+                                      live={lq ?? null}
                                     />
                                   )
                                 })()}

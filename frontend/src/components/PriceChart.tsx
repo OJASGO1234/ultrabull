@@ -5,18 +5,21 @@ import {
   LineSeries,
   LineStyle,
   createSeriesMarkers,
+  type ISeriesApi,
   type MouseEventParams,
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts'
 import type { AnalysisResponse } from '../types'
 import type { Theme } from '../theme'
+import type { LiveQuote } from '../live'
 import { makeChart, fmt } from './chart'
 import { Legend, type LegendItem } from './Legend'
 
 interface Props {
   data: AnalysisResponse
   theme: Theme
+  live?: LiveQuote | null
 }
 
 interface Hover {
@@ -49,8 +52,9 @@ const TOGGLES: { key: keyof Layers; label: string }[] = [
 /** Candles + toggleable layers: MA/BB, S/R levels, trade markers (+text
  * labels), corporate events, index shape overlays. Long windows default the
  * text labels off — they are most of the visual noise. */
-export function PriceChart({ data, theme: t }: Props) {
+export function PriceChart({ data, theme: t, live }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  const candlesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const [hover, setHover] = useState<Hover>({})
   const [layers, setLayers] = useState<Layers>(() => ({
     indicators: true,
@@ -77,6 +81,7 @@ export function PriceChart({ data, theme: t }: Props) {
     candles.setData(data.ohlcv.map(({ time, open, high, low, close }) => ({
       time: time as Time, open, high, low, close,
     })))
+    candlesRef.current = candles
 
     const volume = chart.addSeries(HistogramSeries, {
       priceScaleId: 'volume',
@@ -222,10 +227,38 @@ export function PriceChart({ data, theme: t }: Props) {
     chart.timeScale().fitContent()
 
     return () => {
+      candlesRef.current = null
       chart.unsubscribeCrosshairMove(onMove)
       chart.remove()
     }
   }, [data, t, layers])
+
+  // Stream live ticks into the last candle without rebuilding the chart.
+  useEffect(() => {
+    const candles = candlesRef.current
+    if (!candles || !live || !data.ohlcv.length) return
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(
+      new Date(live.ts * 1000),
+    )
+    const last = data.ohlcv[data.ohlcv.length - 1]
+    if (last.time === today) {
+      candles.update({
+        time: today as Time,
+        open: last.open,
+        high: Math.max(last.high, live.high ?? live.ltp, live.ltp),
+        low: Math.min(last.low, live.low ?? live.ltp, live.ltp),
+        close: live.ltp,
+      })
+    } else if (today > last.time) {
+      candles.update({
+        time: today as Time,
+        open: live.open ?? live.ltp,
+        high: live.high ?? live.ltp,
+        low: live.low ?? live.ltp,
+        close: live.ltp,
+      })
+    }
+  }, [live, data])
 
   const ohlc =
     hover.close != null
@@ -285,7 +318,20 @@ export function PriceChart({ data, theme: t }: Props) {
     <div className="card">
       <div className="card-head">
         <h2>Price — candles &amp; layers</h2>
-        {ohlc && <span className="hover-readout">{ohlc}</span>}
+        <span className="hover-readout">
+          {live && (
+            <span
+              className="live-readout"
+              style={{ color: (live.day_change_pct ?? 0) >= 0 ? t.deltaUpText : t.deltaDownText }}
+            >
+              <span className="live-dot" /> ₹{fmt.price(live.ltp)}
+              {live.day_change_pct != null &&
+                ` ${live.day_change_pct >= 0 ? '+' : ''}${live.day_change_pct.toFixed(2)}%`}
+            </span>
+          )}
+          {live && ohlc && ' · '}
+          {ohlc}
+        </span>
       </div>
       <div className="chip-row">
         {TOGGLES.map((tg) => (

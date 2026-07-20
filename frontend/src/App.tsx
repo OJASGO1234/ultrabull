@@ -18,6 +18,7 @@ import { FundamentalsCard } from './components/FundamentalsCard'
 import { HoldingsPage } from './components/HoldingsPage'
 import { Login } from './components/Login'
 import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
+import { useLiveQuotes } from './live'
 
 type Page = 'analyze' | 'holdings'
 
@@ -57,6 +58,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<AnalysisResponse | null>(null)
   const [active, setActive] = useState<{ symbol: string; range: RangeQuery } | null>(null)
+  const liveState = useLiveQuotes(active && page === 'analyze' ? [active.symbol] : [])
+  const liveQuote = active ? liveState.quotes[active.symbol] ?? null : null
 
   const run = useCallback(async (s: string, range: RangeQuery) => {
     setLoading(true)
@@ -263,6 +266,7 @@ export default function App() {
             key={`${data.symbol}:${data.bars}:${data.last_date}`}
             data={data}
             theme={theme}
+            live={liveQuote}
           />
 
           <div className="card">
