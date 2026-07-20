@@ -531,7 +531,7 @@ def paper_reset(request: Request):
     conn = _db()
     try:
         with conn:
-            for tbl in ("paper_positions", "paper_trades", "paper_equity", "paper_account"):
+            for tbl in ("paper_positions", "paper_trades", "paper_equity", "paper_orders", "paper_account"):
                 conn.execute(f"DELETE FROM {tbl} WHERE username=?", (user,))
         _account(conn, user)  # recreate at defaults
         return {"ok": True}
