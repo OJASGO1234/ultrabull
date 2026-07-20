@@ -172,7 +172,7 @@ export default function App() {
             className={page === 'holdings' ? 'tab tab-on' : 'tab'}
             onClick={() => switchPage('holdings')}
           >
-            SRE holdings
+            Holdings
           </button>
           <button
             type="button"
@@ -244,6 +244,18 @@ export default function App() {
           <section className="run-head">
             <h2>
               {data.symbol}{' '}
+              {liveQuote && (
+                <span
+                  className="live-readout live-big"
+                  style={{ color: (liveQuote.day_change_pct ?? 0) >= 0 ? theme.deltaUpText : theme.deltaDownText }}
+                >
+                  <span className="live-dot" /> ₹
+                  {liveQuote.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {liveQuote.day_change_pct != null &&
+                    ` ${liveQuote.day_change_pct >= 0 ? '+' : ''}${liveQuote.day_change_pct.toFixed(2)}%`}
+                  {liveState.mode === 'ws' && <span className="cell-sub"> realtime</span>}
+                </span>
+              )}{' '}
               <span className="run-meta">
                 · {data.bars} bars · through {data.last_date}
                 {data.cached && ' · cached'}

@@ -8,15 +8,20 @@ page full of pollers doesn't hammer Groww's rate limits.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, WebSocket
+
+from .auth import verify_token
+from .sre import yahoo_symbol as _to_yahoo
 
 router = APIRouter(prefix="/api/live", tags=["live"])
+groww_router = APIRouter(prefix="/api/groww", tags=["groww"])
 
 IST = ZoneInfo("Asia/Kolkata")
 CACHE_TTL = 3.0
@@ -126,3 +131,146 @@ def live(symbols: str = Query(..., description="Comma-separated Yahoo symbols"))
     if len(_cache) > 16:
         _cache.pop(min(_cache, key=lambda k2: _cache[k2][0]))
     return out
+
+
+# ---------- websocket: true realtime via GrowwFeed (NATS push) ----------
+# One shared feed + consume thread for the whole process; each websocket
+# client just reads the feed's snapshot for its symbols and pushes deltas.
+
+_feed = None
+_feed_lock = threading.Lock()
+_feed_subscribed: set[str] = set()
+_symbol_tokens: dict[str, tuple[str, str]] = {}  # yahoo symbol -> (exchange, exchange_token)
+
+
+def _ensure_feed(symbols: list[str]) -> dict[str, tuple[str, str]]:
+    """Subscribe any new symbols on the shared feed; return symbol->key map."""
+    global _feed
+    client = _get_client()
+    with _feed_lock:
+        if _feed is None:
+            from growwapi import GrowwFeed
+            _feed = GrowwFeed(client)
+            threading.Thread(target=_feed.consume, daemon=True, name="groww-feed").start()
+        fresh = []
+        mapping: dict[str, tuple[str, str]] = {}
+        for s in symbols:
+            pair = _split(s)
+            if not pair:
+                continue
+            if s not in _symbol_tokens:
+                try:
+                    inst = client.get_instrument_by_exchange_and_trading_symbol(
+                        exchange=pair[0], trading_symbol=pair[1])
+                except Exception:
+                    continue
+                if not inst:
+                    continue
+                _symbol_tokens[s] = (pair[0], str(inst["exchange_token"]))
+            mapping[s] = _symbol_tokens[s]
+            exch, etok = _symbol_tokens[s]
+            key = f"{exch}:{etok}"
+            if key not in _feed_subscribed and len(_feed_subscribed) < 100:
+                fresh.append({"exchange": exch, "segment": "CASH", "exchange_token": etok})
+                _feed_subscribed.add(key)
+        if fresh:
+            _feed.subscribe_ltp(fresh, on_data_received=lambda *_a, **_k: None)
+        return mapping
+
+
+@router.websocket("/ws")
+async def live_ws(websocket: WebSocket):
+    params = websocket.query_params
+    if os.getenv("ULTRABULL_AUTH", "0") == "1":
+        if verify_token(params.get("token") or "") is None:
+            await websocket.close(code=4401)
+            return
+    symbols = [s.strip().upper() for s in (params.get("symbols") or "").split(",") if s.strip()][:40]
+    try:
+        mapping = await asyncio.to_thread(_ensure_feed, symbols)
+    except Exception:
+        mapping = {}
+    if not mapping:
+        await websocket.close(code=4400)
+        return
+    await websocket.accept()
+    last_sent: dict[str, float] = {}
+    quiet = 0
+    try:
+        while True:
+            snap = _feed.get_ltp() or {}
+            out = {}
+            for sym, (exch, etok) in mapping.items():
+                d = ((snap.get(exch) or {}).get("CASH") or {}).get(etok)
+                if not d or not d.get("ltp"):
+                    continue
+                ltp = float(d["ltp"])
+                if last_sent.get(sym) != ltp:
+                    last_sent[sym] = ltp
+                    ts_ms = d.get("tsInMillis") or 0
+                    out[sym] = {"ltp": ltp, "ts": int(ts_ms / 1000) if ts_ms else int(time.time())}
+            if out:
+                quiet = 0
+                await websocket.send_json({"type": "tick", "quotes": out})
+            else:
+                quiet += 1
+                if quiet >= 25:  # ~15s heartbeat keeps closed-market connections honest
+                    quiet = 0
+                    await websocket.send_json({"type": "hb", "market_open": market_open()})
+            await asyncio.sleep(0.6)
+    except Exception:
+        return  # client went away (or feed hiccup) — polling fallback covers it
+
+
+# ---------- Groww holdings (merged into the holdings page) ----------
+
+@groww_router.get("/holdings")
+def groww_holdings():
+    """The user's Groww demat holdings, normalized to the same shape as the
+    SRE rows so the frontend can merge them into one table."""
+    def _fetch(client):
+        return client.get_holdings_for_user(timeout=15)
+
+    try:
+        try:
+            resp = _fetch(_get_client())
+        except HTTPException:
+            raise
+        except Exception:
+            resp = _fetch(_get_client(force_new=True))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Groww holdings unavailable: {e}")
+
+    rows = []
+    for h in resp.get("holdings", []):
+        qty = float(h.get("quantity") or 0)
+        if qty <= 0:
+            continue
+        sym = (h.get("trading_symbol") or "").strip().upper() or None
+        avg = float(h.get("average_price") or 0) or None
+        invested = round(qty * avg, 2) if avg else None
+        rows.append({
+            "broker": "Groww",
+            "symbol": sym,
+            "series": None,
+            "yahoo_symbol": _to_yahoo(sym, "NSE"),
+            "name": None,
+            "exchange": "NSE",
+            "isin": h.get("isin"),
+            "token_id": None,
+            "quantity": qty,
+            "avg_price": avg,
+            "ltp": None,
+            "prev_close": None,
+            "pledged_qty": float(h.get("pledge_quantity") or 0) or None,
+            "invested": invested,
+            "current_value": None,
+            "pnl": None,
+            "pnl_pct": None,
+            "day_pnl": None,
+            "day_change_pct": None,
+            "raw": h,
+        })
+    return {"holdings": rows, "count": len(rows)}

@@ -5,8 +5,8 @@ import remarkGfm from 'remark-gfm'
 import type { Theme } from '../theme'
 import { fmt } from './chart'
 import {
-  clearCreds, fetchClaudeTake, fetchServerCreds, fetchSignal, fetchSreHoldings, fetchSreNews,
-  fetchStoredSignals, fetchStoredTakes, loadCreds, saveCreds, saveServerCreds, tokenExp,
+  clearCreds, fetchClaudeTake, fetchGrowwHoldings, fetchServerCreds, fetchSignal, fetchSreHoldings,
+  fetchSreNews, fetchStoredSignals, fetchStoredTakes, loadCreds, saveCreds, saveServerCreds, tokenExp,
   type ClaudeTake, type CompactSignal, type HoldingsResponse, type SreHolding, type TakePair,
 } from '../sre'
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from '../api'
@@ -53,7 +53,8 @@ function VerdictBadge({ verdict }: { verdict: string | null | undefined }) {
   return <span className={`verdict verdict-${meta.tone}`}>{meta.label}</span>
 }
 
-const rowKey = (h: SreHolding, i: number) => h.yahoo_symbol ?? h.symbol ?? h.isin ?? String(i)
+const rowKey = (h: SreHolding, i: number) =>
+  `${h.broker ?? 'SRE'}:${h.yahoo_symbol ?? h.symbol ?? h.isin ?? String(i)}`
 
 /** The exit levels translated into THIS position's rupees, from qty × avg cost. */
 function PositionBlock({ h, s, theme: t }: { h: SreHolding; s: CompactSignal; theme: Theme }) {
@@ -179,6 +180,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<HoldingsResponse | null>(null)
+  const [growwRows, setGrowwRows] = useState<SreHolding[]>([])
   const [signals, setSignals] = useState<Record<string, SignalState>>({})
   const [news, setNews] = useState<Record<string, NewsState>>({})
   const [charts, setCharts] = useState<Record<string, ChartState>>({})
@@ -203,9 +205,8 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
   }, [])
 
   // fill the table from the local stores — instant, no computation
-  const loadStored = useCallback(async (holdings: SreHolding[]) => {
+  const loadStored = useCallback(async (symbols: string[]) => {
     const gen = ++generation.current
-    const symbols = [...new Set(holdings.map((h) => h.yahoo_symbol).filter((s): s is string => !!s))]
     setSignals(Object.fromEntries(symbols.map((s) => [s, { status: 'idle' } as SignalState])))
     setTakes({})
     try {
@@ -315,7 +316,6 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
       setCharts({})
       setExpanded(null)
       setTokenDeadline(resp.token?.seconds_left != null ? Date.now() + resp.token.seconds_left * 1000 : null)
-      void loadStored(resp.holdings)
     } catch (err) {
       const e = err as Error & { status?: number }
       setError(e.message)
@@ -323,7 +323,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
     } finally {
       setLoading(false)
     }
-  }, [loadStored])
+  }, [])
 
   // auto-load when the tab already holds working credentials; otherwise pull
   // the server-stored creds to preset the fields (and auto-connect while the
@@ -378,10 +378,33 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
     }
   }, [clientId, token])
 
-  const holdings = data?.holdings ?? []
+  // Groww rows need no pasted creds — the server authenticates via TOTP keys
+  useEffect(() => {
+    let cancelled = false
+    fetchGrowwHoldings()
+      .then((r) => {
+        if (!cancelled) setGrowwRows(r.holdings)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const holdings: SreHolding[] = [
+    ...(data?.holdings ?? []).map((h) => ({ ...h, broker: 'SRE' as const })),
+    ...growwRows,
+  ]
   const allSymbols = [...new Set(holdings.map((h) => h.yahoo_symbol).filter((s): s is string => !!s))]
+  const symbolsKey = allSymbols.sort().join(',')
   const anyRunning = allSymbols.some((s) => signals[s]?.status === 'loading')
   const liveState = useLiveQuotes(allSymbols)
+
+  // (re)load stored signals + takes whenever the combined symbol set changes
+  useEffect(() => {
+    if (symbolsKey) void loadStored(symbolsKey.split(','))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey, loadStored])
 
   const sig = (h: SreHolding): CompactSignal | null => {
     const st = h.yahoo_symbol ? signals[h.yahoo_symbol] : undefined
@@ -469,7 +492,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
 
       {error && <div className="error-banner">⚠ {error}</div>}
 
-      {data && holdings.length === 0 && (
+      {data && (data.holdings?.length ?? 0) === 0 && growwRows.length === 0 && (
         <div className="card">
           <p className="empty">
             SRE returned no holdings rows. If the account does hold stock, the response shape may be one we don't
@@ -533,6 +556,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
               <thead>
                 <tr>
                   <th>Stock</th>
+                  <th>Broker</th>
                   <th className="num">Qty</th>
                   <th className="num">Avg ₹</th>
                   <th className="num">Price ₹</th>
@@ -583,6 +607,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                             {[h.exchange, h.symbol ? h.isin : null].filter(Boolean).join(' · ')}
                           </span>
                         </td>
+                        <td>{h.broker ?? 'SRE'}</td>
                         <td className="num">{h.quantity == null ? '—' : fmt.int(h.quantity)}</td>
                         <td className="num">{fmt.price(h.avg_price)}</td>
                         <td className="num">
@@ -673,7 +698,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                       </tr>
                       {isOpen && (
                         <tr className="holding-detail">
-                          <td colSpan={13}>
+                          <td colSpan={14}>
                             {s && priceConflict && (
                               <p className="detail-warn">
                                 ⚠ Price sources disagree: the broker (SRE) reports ₹{fmt.price(h.ltp)} while Yahoo's

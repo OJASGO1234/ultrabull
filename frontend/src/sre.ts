@@ -6,6 +6,7 @@ import { authFetch } from './auth'
 import type { IfBreakout } from './types'
 
 export interface SreHolding {
+  broker?: 'SRE' | 'Groww'
   symbol: string | null
   series: string | null
   yahoo_symbol: string | null
@@ -174,6 +175,11 @@ export function fetchSreHoldings(creds: SreCreds): Promise<HoldingsResponse> {
 
 export function fetchSreNews(creds: SreCreds, symbol: string): Promise<{ items: Record<string, unknown>[]; raw: unknown }> {
   return post('/api/sre/news', { client_id: creds.clientId, token: creds.token, symbol })
+}
+
+/** Groww demat holdings — server authenticates via TOTP keys, nothing to paste. */
+export function fetchGrowwHoldings(): Promise<{ holdings: SreHolding[]; count: number }> {
+  return request('/api/groww/holdings')
 }
 
 /** Compute and persist a fresh snapshot. force=true bypasses the server's
