@@ -3,7 +3,7 @@
 // (gone when the tab closes) and travel in POST bodies, never URLs.
 import { rangeToQuery, type RangeQuery } from './api'
 import { authFetch } from './auth'
-import type { IfBreakout } from './types'
+import type { IfBreakout, KeyIndicators } from './types'
 
 export interface SreHolding {
   broker?: 'SRE' | 'Groww'
@@ -76,6 +76,7 @@ export interface CompactSignal {
   }
   factors: { name: string; score: number; detail: string }[]
   outlook_1w: { p_up: number | null; verdict: string | null; n: number | null; fallback: boolean | null }
+  key_indicators: KeyIndicators | null
   in_earnings_blackout: boolean
   next_earnings: string | null
   expected_results_window: { start: string; end: string; basis: string } | null
@@ -180,6 +181,33 @@ export function fetchSreNews(creds: SreCreds, symbol: string): Promise<{ items: 
 /** Groww demat holdings — server authenticates via TOTP keys, nothing to paste. */
 export function fetchGrowwHoldings(): Promise<{ holdings: SreHolding[]; count: number }> {
   return request('/api/groww/holdings')
+}
+
+// ---- holding buy-dates + portfolio XIRR (brokers don't expose purchase dates) ----
+
+export function fetchHoldDates(): Promise<{ dates: Record<string, string> }> {
+  return request('/api/holddates')
+}
+
+export function saveHoldDate(key: string, buyDate: string): Promise<{ ok: boolean }> {
+  return request('/api/holddates', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, buy_date: buyDate }),
+  })
+}
+
+export interface XirrResult {
+  portfolio_xirr_pct: number | null
+  dated_invested: number
+  dated_current: number
+  positions: Record<string, { annualized_pct: number | null; buy_date: string | null; days_held: number | null }>
+}
+
+export function fetchXirr(
+  positions: { key: string; invested: number; current_value: number; buy_date?: string | null }[],
+): Promise<XirrResult> {
+  return post('/api/xirr', { positions })
 }
 
 /** Compute and persist a fresh snapshot. force=true bypasses the server's

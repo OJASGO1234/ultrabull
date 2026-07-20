@@ -15,6 +15,7 @@ import { OutlookCard } from './components/OutlookCard'
 import { AdviceCard } from './components/AdviceCard'
 import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
+import { KeyIndicators } from './components/KeyIndicators'
 import { HoldingsPage } from './components/HoldingsPage'
 import { Login } from './components/Login'
 import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
@@ -265,6 +266,8 @@ export default function App() {
           </section>
 
           {data.advice && <AdviceCard advice={data.advice} outlook={data.outlook} theme={theme} />}
+
+          {data.key_indicators && <KeyIndicators ki={data.key_indicators} theme={theme} />}
 
           {data.outlook && <OutlookCard outlook={data.outlook} theme={theme} />}
 

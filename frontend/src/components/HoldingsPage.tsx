@@ -9,9 +9,11 @@ import {
   fetchSreNews, fetchStoredSignals, fetchStoredTakes, loadCreds, saveCreds, saveServerCreds, tokenExp,
   type ClaudeTake, type CompactSignal, type HoldingsResponse, type SreHolding, type TakePair,
 } from '../sre'
+import { fetchHoldDates, fetchXirr, saveHoldDate, type XirrResult } from '../sre'
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from '../api'
 import type { AnalysisResponse } from '../types'
 import { PriceChart } from './PriceChart'
+import { KeyIndicators } from './KeyIndicators'
 import { useLiveQuotes } from '../live'
 
 type SignalState =
@@ -429,6 +431,41 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
   )
   const totalPnl = totals.current - totals.invested
 
+  // buy-dates + portfolio XIRR (positions priced with the same live>eod logic)
+  const [holdDates, setHoldDates] = useState<Record<string, string>>({})
+  const [xirr, setXirr] = useState<XirrResult | null>(null)
+  useEffect(() => {
+    fetchHoldDates().then((r) => setHoldDates(r.dates)).catch(() => undefined)
+  }, [])
+  const positionsKey = holdings
+    .map((h, i) => {
+      const price = effPrice(h)
+      const invested = h.invested ?? (h.quantity != null && h.avg_price != null ? h.quantity * h.avg_price : null)
+      const cur = h.quantity != null && price != null ? h.quantity * price : h.current_value
+      return `${rowKey(h, i)}|${invested ?? ''}|${cur ?? ''}|${holdDates[rowKey(h, i)] ?? ''}`
+    })
+    .join(';')
+  useEffect(() => {
+    if (!holdings.length) return
+    const positions = holdings
+      .map((h, i) => {
+        const price = effPrice(h)
+        const invested = h.invested ?? (h.quantity != null && h.avg_price != null ? h.quantity * h.avg_price : null)
+        const cur = h.quantity != null && price != null ? h.quantity * price : h.current_value
+        return invested != null && cur != null
+          ? { key: rowKey(h, i), invested, current_value: cur, buy_date: holdDates[rowKey(h, i)] ?? null }
+          : null
+      })
+      .filter((p): p is NonNullable<typeof p> => p != null)
+    if (positions.length) fetchXirr(positions).then(setXirr).catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionsKey])
+
+  const setBuyDate = useCallback((key: string, date: string) => {
+    setHoldDates((prev) => ({ ...prev, [key]: date }))
+    void saveHoldDate(key, date).catch(() => undefined)
+  }, [])
+
   const secondsLeft = tokenDeadline != null ? Math.max(0, Math.round((tokenDeadline - now) / 1000)) : null
   const pnlColor = (v: number | null) =>
     v == null ? undefined : { color: v >= 0 ? t.deltaUpText : t.deltaDownText }
@@ -519,6 +556,14 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                 {totalPnl >= 0 ? '+' : ''}₹{fmt.compact(totalPnl)}
                 {totals.invested > 0 && ` (${((100 * totalPnl) / totals.invested).toFixed(1)}%)`}
               </span>
+              {xirr?.portfolio_xirr_pct != null && (
+                <span title="Money-weighted annualized return (XIRR) over the holdings with a buy date set. Set dates in each row's drawer.">
+                  {' · '}XIRR{' '}
+                  <span style={pnlColor(xirr.portfolio_xirr_pct)}>
+                    {xirr.portfolio_xirr_pct >= 0 ? '+' : ''}{xirr.portfolio_xirr_pct.toFixed(1)}%
+                  </span>
+                </span>
+              )}
             </span>
             <span className="analyse-controls">
               <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="Analysis window">
@@ -776,6 +821,29 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                     {s.breakout.recent_breakout?.english && <li>{s.breakout.recent_breakout.english}</li>}
                                   </ul>
                                   {h.quantity != null && h.avg_price != null && <PositionBlock h={h} s={s} theme={t} />}
+                                  <p className="buydate-row">
+                                    <label>
+                                      Bought on{' '}
+                                      <input
+                                        type="date"
+                                        value={holdDates[key] ?? ''}
+                                        max={new Date().toISOString().slice(0, 10)}
+                                        onChange={(e) => e.target.value && setBuyDate(key, e.target.value)}
+                                      />
+                                    </label>
+                                    {xirr?.positions[key]?.annualized_pct != null && (
+                                      <span style={pnlColor(xirr.positions[key]!.annualized_pct)}>
+                                        {' '}· annualized {xirr.positions[key]!.annualized_pct! >= 0 ? '+' : ''}
+                                        {xirr.positions[key]!.annualized_pct!.toFixed(1)}%
+                                        {xirr.positions[key]?.days_held != null && (
+                                          <span className="cell-sub"> ({xirr.positions[key]!.days_held}d held)</span>
+                                        )}
+                                      </span>
+                                    )}
+                                    {!holdDates[key] && (
+                                      <span className="cell-sub"> — set a buy date to get annualized return &amp; portfolio XIRR</span>
+                                    )}
+                                  </p>
                                   <div className="detail-actions">
                                     {h.yahoo_symbol && (
                                       <>
@@ -832,6 +900,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                 onAsk={(deep) => void askClaude(h, deep)}
                               />
                             )}
+                            {s?.key_indicators && <KeyIndicators ki={s.key_indicators} theme={t} compact />}
                             {h.yahoo_symbol && charts[h.yahoo_symbol] && (
                               <div className="drawer-chart">
                                 {(() => {

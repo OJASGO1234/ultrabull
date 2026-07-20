@@ -43,9 +43,10 @@ from market_context import (
 from levels import find_levels
 from outlook import build_outlook
 from advice import build_advice
+from indicators import build_key_indicators
 from fundamentals import fetch_fundamentals
 from interpret import interpret_rsi, interpret_macd, interpret_equity
-from idea_lab import evaluate_rule, FEATURES as IDEA_FEATURES
+from idea_lab import evaluate_rule, backtest_strategy, FEATURES as IDEA_FEATURES
 
 IDEA_CACHE_DIR = os.path.join(ROOT, "data_cache")
 from vbt_to_pd_ind import build_ind_df_from_vbt, extract_symbol_df
@@ -569,6 +570,11 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
         advice_json = None
 
     try:
+        key_indicators_json = build_key_indicators(df_ohlcv, ind_df, ctx, raw_levels)
+    except Exception:
+        key_indicators_json = None
+
+    try:
         fundamentals_json = fetch_fundamentals(symbol)
     except Exception:
         fundamentals_json = None
@@ -641,6 +647,7 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
         "levels": levels_json,
         "outlook": outlook_json,
         "advice": advice_json,
+        "key_indicators": key_indicators_json,
         "fundamentals": fundamentals_json,
         "interpretations": interpretations_json,
         "indexes": indexes_json,
@@ -758,13 +765,20 @@ You are not a financial adviser and must not promise outcomes; frame everything 
 evidence and risk, and say "the data doesn't support that" when it doesn't. Refuse \
 requests to place orders — this app analyzes, the user decides and executes.
 
-You have a `test_rule` tool that backtests rule ideas against the project's 4y NSE \
-universe with the same event-study methodology. When the user proposes a testable rule \
-("does X work?", "what if we buy when..."), translate it into conditions and RUN it \
-rather than speculating. Report results honestly: sample size, t-stat (treat |t| < 2 as \
-inconclusive), hit rate, and ALWAYS compare the recent-12-months split against the full \
-sample — an edge that vanished recently is not an edge. Small n or thin coverage means \
-say so."""
+You have two backtest tools over the project's 4y, 35-symbol NSE universe — USE them \
+rather than speculating when the user proposes something testable:
+- `test_rule` measures forward-return edge at 5/10/21 bars (t-stat, hit rate, excess bps). \
+Reach for it on "does X predict anything?" / "is X bullish?" questions.
+- `backtest_strategy` simulates actual trades with an entry rule AND an exit rule \
+(stop/target in ATR multiples + max hold), returning win rate, avg win/loss, profit \
+factor, expectancy, and exit mix. Reach for it on "what if I buy when X, stop at Y, \
+target Z?" or when the user wants win-rate/profit-factor.
+Report results honestly: sample size, and for test_rule treat |t| < 2 as inconclusive. \
+ALWAYS compare the recent-12-months split against the full sample — an edge that vanished \
+recently is not an edge. For backtest_strategy, remind that it measures edge (1-unit \
+sizing, no fees/slippage), not rupee P&L, and that a high win rate with a tight target \
+and wide stop can still lose money — read profit factor and expectancy together. Small n \
+or thin coverage means say so."""
 
 
 TEST_RULE_TOOL = {
@@ -800,6 +814,45 @@ TEST_RULE_TOOL = {
                     "required": ["feature", "op", "value"],
                 },
             },
+        },
+        "required": ["direction", "conditions"],
+    },
+}
+
+
+BACKTEST_TOOL = {
+    "name": "backtest_strategy",
+    "description": (
+        "Trade-level backtest of a complete strategy (entry rule + exit rule) across the "
+        "4-year, 35-symbol NSE universe. Unlike test_rule (which measures forward-return edge "
+        "at fixed horizons), this simulates actual trades: enter at the next bar's open when "
+        "ALL entry conditions hold, then exit at a stop (sl_atr x ATR against you), a target "
+        "(tp_atr x ATR in your favour), or after max_hold bars — whichever comes first. Returns "
+        "win rate, avg win/loss, profit factor, expectancy, exit mix, and a recent-12-months "
+        "stability split. Use when the user asks 'what if I buy when X, stop at Y, target Z' or "
+        "wants win-rate/profit-factor rather than a t-stat. Same feature units as test_rule. "
+        "1-unit sizing, no fees/slippage — it measures edge, not rupee P&L; say so."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Short label for the strategy"},
+            "direction": {"type": "string", "enum": ["long", "short"]},
+            "conditions": {
+                "type": "array", "minItems": 1, "maxItems": 6,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "feature": {"type": "string", "enum": IDEA_FEATURES},
+                        "op": {"type": "string", "enum": ["<", "<=", ">", ">=", "=="]},
+                        "value": {"type": "number"},
+                    },
+                    "required": ["feature", "op", "value"],
+                },
+            },
+            "sl_atr": {"type": "number", "description": "Stop distance in ATR multiples (e.g. 1.5). Default 1.5"},
+            "tp_atr": {"type": "number", "description": "Target distance in ATR multiples (e.g. 3.0). Default 3.0"},
+            "max_hold": {"type": "integer", "description": "Max bars to hold before timing out (1-60). Default 10"},
         },
         "required": ["direction", "conditions"],
     },
@@ -854,7 +907,7 @@ def chat(req: ChatRequest):
                 model=CHAT_MODEL,
                 max_tokens=8192,
                 system=system_blocks,
-                tools=[TEST_RULE_TOOL],
+                tools=[TEST_RULE_TOOL, BACKTEST_TOOL],
                 messages=msgs,
             )
             if response.stop_reason != "tool_use":
@@ -865,17 +918,28 @@ def chat(req: ChatRequest):
                 if block.type != "tool_use":
                     continue
                 try:
-                    res = evaluate_rule(
-                        conditions=block.input["conditions"],
-                        direction=block.input.get("direction", "long"),
-                        name=block.input.get("name", "idea"),
-                        cache_dir=IDEA_CACHE_DIR,
-                    )
+                    if block.name == "backtest_strategy":
+                        res = backtest_strategy(
+                            conditions=block.input["conditions"],
+                            direction=block.input.get("direction", "long"),
+                            sl_atr=block.input.get("sl_atr", 1.5),
+                            tp_atr=block.input.get("tp_atr", 3.0),
+                            max_hold=block.input.get("max_hold", 10),
+                            name=block.input.get("name", "strategy"),
+                            cache_dir=IDEA_CACHE_DIR,
+                        )
+                    else:
+                        res = evaluate_rule(
+                            conditions=block.input["conditions"],
+                            direction=block.input.get("direction", "long"),
+                            name=block.input.get("name", "idea"),
+                            cache_dir=IDEA_CACHE_DIR,
+                        )
                     tool_results.append({"type": "tool_result", "tool_use_id": block.id,
                                          "content": json.dumps(res, default=str)})
                 except Exception as e:
                     tool_results.append({"type": "tool_result", "tool_use_id": block.id,
-                                         "content": f"test_rule failed: {e}", "is_error": True})
+                                         "content": f"{block.name} failed: {e}", "is_error": True})
             msgs.append({"role": "user", "content": tool_results})
     except (anthropic.AuthenticationError, TypeError):
         # TypeError = SDK found no credential source at all (raised at request time)
@@ -992,6 +1056,7 @@ def _compact_signal(result: dict) -> dict:
         "factors": factors[:4],
         "outlook_1w": {"p_up": _num(h1w.get("p_up")), "verdict": h1w.get("verdict"),
                        "n": h1w.get("n"), "fallback": h1w.get("fallback")},
+        "key_indicators": result.get("key_indicators"),
         "in_earnings_blackout": bool((result.get("timing") or {}).get("in_earnings_blackout")),
         "next_earnings": (result.get("timing") or {}).get("next_earnings"),
         "expected_results_window": (result.get("timing") or {}).get("expected_results_window"),
@@ -1057,6 +1122,144 @@ def signal(
     snap["range"] = {"years": None if start else years, "start": start, "end": end}
     stored_at = _snapshot_put(symbol, snap)
     return {**snap, "stored_at": stored_at, "cached": was_cached}
+
+
+# ---------- holding buy-dates + XIRR (brokers don't expose purchase dates) ----------
+
+HOLD_DATES_DB = os.path.join(ROOT, "data_cache", "hold_dates.db")
+
+
+def _hold_dates_db() -> sqlite3.Connection:
+    os.makedirs(os.path.dirname(HOLD_DATES_DB), exist_ok=True)
+    conn = sqlite3.connect(HOLD_DATES_DB, timeout=10.0)
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS hold_dates ("
+        "  username TEXT NOT NULL,"
+        "  key TEXT NOT NULL,"           # broker:symbol
+        "  buy_date TEXT NOT NULL,"      # YYYY-MM-DD
+        "  PRIMARY KEY (username, key))"
+    )
+    return conn
+
+
+def _xirr(flows: list[tuple[_date_cls, float]], guess: float = 0.15) -> float | None:
+    """Annualized IRR of dated cashflows (Newton's method, day-count basis).
+    flows: [(date, amount)] with outflows negative, inflows positive."""
+    if len(flows) < 2:
+        return None
+    t0 = min(f[0] for f in flows)
+    years = [(d - t0).days / 365.0 for d, _ in flows]
+    amts = [a for _, a in flows]
+    if not (any(a < 0 for a in amts) and any(a > 0 for a in amts)):
+        return None
+    rate = guess
+    for _ in range(100):
+        f = sum(a / (1 + rate) ** y for a, y in zip(amts, years))
+        df = sum(-y * a / (1 + rate) ** (y + 1) for a, y in zip(amts, years))
+        if abs(df) < 1e-9:
+            break
+        new = rate - f / df
+        if new <= -0.999:
+            new = (rate - 0.999) / 2
+        if abs(new - rate) < 1e-7:
+            return new
+        rate = new
+    return rate if -0.999 < rate < 100 else None
+
+
+class HoldDate(BaseModel):
+    key: str  # "broker:SYMBOL"
+    buy_date: str  # YYYY-MM-DD
+
+
+@app.get("/api/holddates")
+def get_hold_dates(request: Request):
+    user = getattr(request.state, "user", None) or "local"
+    conn = _hold_dates_db()
+    try:
+        rows = conn.execute("SELECT key, buy_date FROM hold_dates WHERE username = ?", (user,)).fetchall()
+    finally:
+        conn.close()
+    return {"dates": {k: v for k, v in rows}}
+
+
+@app.put("/api/holddates")
+def put_hold_date(req: HoldDate, request: Request):
+    user = getattr(request.state, "user", None) or "local"
+    try:
+        _date_cls.fromisoformat(req.buy_date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="buy_date must be YYYY-MM-DD")
+    conn = _hold_dates_db()
+    try:
+        with conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO hold_dates (username, key, buy_date) VALUES (?, ?, ?)",
+                (user, req.key.strip(), req.buy_date),
+            )
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+class XirrPosition(BaseModel):
+    key: str
+    invested: float
+    current_value: float
+    buy_date: str | None = None
+
+
+class XirrRequest(BaseModel):
+    positions: list[XirrPosition]
+
+
+@app.post("/api/xirr")
+def xirr(req: XirrRequest, request: Request):
+    """Portfolio XIRR from dated positions, plus each position's annualized
+    return. Positions with no buy_date are excluded from XIRR (but the caller
+    still shows their absolute return)."""
+    user = getattr(request.state, "user", None) or "local"
+    conn = _hold_dates_db()
+    try:
+        stored = dict(conn.execute("SELECT key, buy_date FROM hold_dates WHERE username = ?", (user,)).fetchall())
+    finally:
+        conn.close()
+
+    today = _date_cls.today()
+    flows: list[tuple[_date_cls, float]] = []
+    per_key: dict[str, dict] = {}
+    dated_invested = dated_value = 0.0
+    for p in req.positions:
+        bd = p.buy_date or stored.get(p.key)
+        entry = {"annualized_pct": None, "buy_date": bd, "days_held": None}
+        if bd:
+            try:
+                d = _date_cls.fromisoformat(bd)
+            except ValueError:
+                d = None
+            if d and d < today and p.invested > 0:
+                days = (today - d).days
+                entry["days_held"] = days
+                if days >= 1:
+                    yrs = days / 365.0
+                    entry["annualized_pct"] = round(((p.current_value / p.invested) ** (1 / yrs) - 1) * 100, 2)
+                flows.append((d, -float(p.invested)))
+                dated_invested += p.invested
+                dated_value += p.current_value
+        per_key[p.key] = entry
+
+    portfolio_xirr = None
+    if flows:
+        flows.append((today, float(dated_value)))
+        r = _xirr(flows)
+        portfolio_xirr = round(r * 100, 2) if r is not None else None
+
+    return {
+        "portfolio_xirr_pct": portfolio_xirr,
+        "dated_invested": round(dated_invested, 2),
+        "dated_current": round(dated_value, 2),
+        "positions": per_key,
+    }
 
 
 @app.get("/api/signals")

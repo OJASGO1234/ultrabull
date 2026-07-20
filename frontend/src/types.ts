@@ -195,6 +195,21 @@ export interface Advice {
   note: string
 }
 
+export interface KeyFlag {
+  label: string
+  state: 'bullish' | 'bearish' | 'neutral'
+  detail: string
+  value: string | null
+}
+
+export interface KeyIndicators {
+  lean: 'bullish' | 'bearish' | 'mixed'
+  bullish_count: number
+  bearish_count: number
+  flags: KeyFlag[]
+  note: string
+}
+
 /** Conditional path when the target sits at resistance: what changes if it clears. */
 export interface IfBreakout {
   trigger: number | null
@@ -267,6 +282,7 @@ export interface AnalysisResponse {
   levels: Level[]
   outlook: Outlook | null
   advice: Advice | null
+  key_indicators: KeyIndicators | null
   fundamentals: Fundamentals | null
   interpretations: { rsi: string | null; macd: string | null; equity: string | null } | null
   indexes: { name: string; points: Point[] }[]

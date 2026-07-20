@@ -90,6 +90,9 @@ def _feature_frame(symbol: str, cache_dir: str | None) -> pd.DataFrame | None:
 
     for hz in HORIZONS:
         f[f"_fwd_{hz}"] = c.shift(-hz) / c - 1.0
+    # raw OHLC + ATR carried for trade-level backtests (stop/target hit checks)
+    f["_open"], f["_high"], f["_low"], f["_close"] = px["Open"], h, l, c
+    f["_atr"] = tr.ewm(alpha=1 / 14, adjust=False).mean()
     return f.iloc[WARM:]
 
 
@@ -180,4 +183,135 @@ def evaluate_rule(conditions: list[dict], direction: str = "long",
     if total_bars:
         n5 = out["horizons"].get(str(HORIZONS[0]), {}).get("n", 0)
         out["coverage_pct"] = round(n5 / total_bars * 100, 2)
+    return out
+
+
+def backtest_strategy(
+    conditions: list[dict],
+    direction: str = "long",
+    sl_atr: float = 1.5,
+    tp_atr: float = 3.0,
+    max_hold: int = 10,
+    name: str = "strategy",
+    cache_dir: str | None = None,
+) -> dict:
+    """Trade-level backtest across the 4y x 35-symbol NSE universe.
+
+    On each bar where ALL entry conditions hold and no trade is open for that
+    symbol, enter at the NEXT bar's open. Exit at whichever comes first: stop
+    (sl_atr x ATR against entry), target (tp_atr x ATR in favour), or max_hold
+    bars (exit at close). Intrabar, a bar that touches both stop and target is
+    scored as the STOP (pessimistic, matching the project simulator). Returns
+    win rate, avg win/loss, profit factor, expectancy, and a recent-12m split.
+
+    Deliberately simpler than the production simulator (fixed 1-unit sizing, no
+    slippage/fees, no gap modelling) — it answers "does this entry+exit rule
+    have an edge?", not "what P&L would I have made". Costs are noted so the
+    chat can hedge accordingly.
+    """
+    if not conditions or len(conditions) > 6:
+        raise ValueError("Provide 1-6 entry conditions")
+    for c in conditions:
+        if c.get("feature") not in FEATURES:
+            raise ValueError(f"Unknown feature {c.get('feature')!r}. Allowed: {FEATURES}")
+        if c.get("op") not in OPS:
+            raise ValueError(f"Unknown op {c.get('op')!r}. Allowed: {sorted(OPS)}")
+        float(c["value"])
+    if direction not in ("long", "short"):
+        raise ValueError("direction must be 'long' or 'short'")
+    sl_atr, tp_atr = float(sl_atr), float(tp_atr)
+    max_hold = int(max_hold)
+    if sl_atr <= 0 or tp_atr <= 0:
+        raise ValueError("sl_atr and tp_atr must be positive")
+    if not (1 <= max_hold <= 60):
+        raise ValueError("max_hold must be 1-60 bars")
+    long = direction == "long"
+
+    trades = []
+    used = 0
+    for sym in UNIVERSE:
+        f = _frame(sym, cache_dir)
+        if f is None:
+            continue
+        used += 1
+        mask = pd.Series(True, index=f.index)
+        for c in conditions:
+            col, v, op = f[c["feature"]], float(c["value"]), c["op"]
+            m = (col < v) if op == "<" else (col <= v) if op == "<=" else \
+                (col > v) if op == ">" else (col >= v) if op == ">=" else (col == v)
+            mask &= m.fillna(False)
+
+        o = f["_open"].to_numpy(); hi = f["_high"].to_numpy()
+        lo = f["_low"].to_numpy(); cl = f["_close"].to_numpy()
+        atr = f["_atr"].to_numpy(); sig = mask.to_numpy()
+        dates = f.index
+        n = len(f)
+        i = 0
+        while i < n - 1:
+            if not sig[i] or not np.isfinite(atr[i]) or atr[i] <= 0:
+                i += 1
+                continue
+            entry = o[i + 1]
+            if not np.isfinite(entry):
+                i += 1
+                continue
+            a = atr[i]
+            stop = entry - sl_atr * a if long else entry + sl_atr * a
+            targ = entry + tp_atr * a if long else entry - tp_atr * a
+            exit_px, reason, held = None, None, 0
+            for j in range(i + 1, min(i + 1 + max_hold, n)):
+                held = j - i
+                if long:
+                    if lo[j] <= stop:  # stop checked first (pessimistic)
+                        exit_px, reason = stop, "SL"; break
+                    if hi[j] >= targ:
+                        exit_px, reason = targ, "TP"; break
+                else:
+                    if hi[j] >= stop:
+                        exit_px, reason = stop, "SL"; break
+                    if lo[j] <= targ:
+                        exit_px, reason = targ, "TP"; break
+            if exit_px is None:  # timed out
+                jj = min(i + max_hold, n - 1)
+                exit_px, reason, held = cl[jj], "TIME", jj - i
+            ret = (exit_px / entry - 1) if long else (entry / exit_px - 1)
+            trades.append({"date": dates[i + 1], "ret": float(ret), "reason": reason, "held": held})
+            i = i + 1 + held  # no overlapping trades per symbol
+
+    out = {
+        "name": name, "direction": direction,
+        "conditions": conditions, "exit": {"sl_atr": sl_atr, "tp_atr": tp_atr, "max_hold": max_hold},
+        "symbols_used": used,
+        "methodology": "Enter next-open on signal, exit at stop / target / max_hold (stop wins "
+                       "same-bar ties). 1-unit sizing, no fees or slippage — measures edge, not P&L. "
+                       "recent_12m = same stats on the last 12 months (stability check).",
+    }
+    if not trades:
+        out["trades"] = 0
+        return out
+
+    tdf = pd.DataFrame(trades)
+
+    def _stats(d: pd.DataFrame) -> dict:
+        wins = d[d["ret"] > 0]["ret"]; losses = d[d["ret"] <= 0]["ret"]
+        gross_win = float(wins.sum()); gross_loss = float(-losses.sum())
+        mu = float(d["ret"].mean()); sd = float(d["ret"].std(ddof=1)) if len(d) > 1 else 0.0
+        return {
+            "trades": int(len(d)),
+            "win_rate": round(float((d["ret"] > 0).mean()), 3),
+            "avg_return_pct": round(mu * 100, 3),
+            "avg_win_pct": round(float(wins.mean()) * 100, 3) if len(wins) else None,
+            "avg_loss_pct": round(float(losses.mean()) * 100, 3) if len(losses) else None,
+            "expectancy_pct": round(mu * 100, 3),
+            "profit_factor": round(gross_win / gross_loss, 2) if gross_loss > 0 else ("inf" if gross_win > 0 else None),
+            "t_stat": round(mu / (sd / np.sqrt(len(d))), 2) if len(d) > 2 and sd > 0 else None,
+            "median_hold_bars": int(d["held"].median()),
+            "exit_mix": {k: int(v) for k, v in d["reason"].value_counts().items()},
+        }
+
+    out["overall"] = _stats(tdf)
+    cutoff = tdf["date"].max() - pd.Timedelta(days=365)
+    recent = tdf[tdf["date"] >= cutoff]
+    out["recent_12m"] = _stats(recent) if len(recent) >= 10 else {"trades": int(len(recent)),
+                                                                   "note": "too few recent trades to judge stability"}
     return out
