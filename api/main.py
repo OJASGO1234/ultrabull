@@ -1306,6 +1306,52 @@ def ledger_poll():
     return poll_groww()
 
 
+# ---------- validation audit (health loop — served read-only; timer recomputes) ----------
+
+@app.get("/api/audit")
+def audit_latest():
+    """Most recent validation audit (calibration + pattern/gate decay + coverage)."""
+    from audit import latest_audit
+    rep = latest_audit()
+    if rep is None:
+        return {"available": False,
+                "detail": "No audit yet — the weekly timer or POST /api/audit/run produces one."}
+    return {"available": True, "report": rep}
+
+
+@app.get("/api/audit/history")
+def audit_trend(limit: int = Query(26, ge=1, le=104)):
+    from audit import audit_history
+    return {"history": audit_history(limit)}
+
+
+def _held_symbols() -> list[str]:
+    """Yahoo symbols the user actually holds (Groww), for the coverage check."""
+    syms: set[str] = set()
+    try:
+        from .live import groww_holdings
+        for r in groww_holdings().get("holdings", []):
+            if r.get("yahoo_symbol"):
+                syms.add(r["yahoo_symbol"])
+    except Exception:
+        pass
+    return sorted(syms)
+
+
+@app.post("/api/audit/run")
+def audit_run():
+    """Recompute the audit now (the systemd timer calls the module directly)."""
+    from audit import run_audit, save_audit
+    res = run_audit(cache_dir=IDEA_CACHE_DIR, held_symbols=_held_symbols())
+    if not res.get("ok"):
+        raise HTTPException(status_code=503, detail=res.get("error", "audit failed"))
+    stamp = pd.Timestamp.now().isoformat(timespec="seconds")
+    save_audit(res["report"], stamp)
+    return {"ok": True, "generated_at": stamp,
+            "decayed": [p["pattern"] for p in res["report"]["pattern_decay"]["patterns"]
+                        if p["status"] in ("decayed", "negative")]}
+
+
 @app.get("/api/signals")
 def signals(symbols: str = Query(..., description="Comma-separated Yahoo symbols")):
     """Read-only batch fetch of stored snapshots — never computes anything.

@@ -1069,3 +1069,21 @@ tbody tr:last-child td {
   font: inherit;
   font-size: 12px;
 }
+
+/* Health / validation page */
+.calib-block {
+  margin-top: 12px;
+}
+
+.calib-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.calib-table th,
+.calib-table td {
+  padding: 4px 12px 4px 0;
+}

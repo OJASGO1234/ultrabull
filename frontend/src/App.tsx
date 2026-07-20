@@ -17,17 +17,19 @@ import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
 import { KeyIndicators } from './components/KeyIndicators'
 import { HoldingsPage } from './components/HoldingsPage'
+import { HealthPage } from './components/HealthPage'
 import { Login } from './components/Login'
 import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
 import { useLiveQuotes } from './live'
 
-type Page = 'analyze' | 'holdings'
+type Page = 'analyze' | 'holdings' | 'health'
 
 export default function App() {
   const theme = useTheme()
-  const [page, setPage] = useState<Page>(() =>
-    new URLSearchParams(window.location.search).get('page') === 'holdings' ? 'holdings' : 'analyze',
-  )
+  const [page, setPage] = useState<Page>(() => {
+    const p = new URLSearchParams(window.location.search).get('page')
+    return p === 'holdings' || p === 'health' ? p : 'analyze'
+  })
   const [wide, setWide] = useState(() => localStorage.getItem('ui.wide') === '1')
   const [authState, setAuthState] = useState<'checking' | 'login' | 'ok'>('checking')
   const [authRequired, setAuthRequired] = useState(false)
@@ -123,7 +125,7 @@ export default function App() {
   const switchPage = useCallback((p: Page) => {
     setPage(p)
     const url = new URL(window.location.href)
-    if (p === 'holdings') url.searchParams.set('page', 'holdings')
+    if (p !== 'analyze') url.searchParams.set('page', p)
     else url.searchParams.delete('page')
     window.history.replaceState(null, '', url)
   }, [])
@@ -177,6 +179,13 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={page === 'health' ? 'tab tab-on' : 'tab'}
+            onClick={() => switchPage('health')}
+          >
+            Health
+          </button>
+          <button
+            type="button"
             className="tab tab-end"
             onClick={toggleWide}
             title={wide ? 'Constrain to a centered column' : 'Use the full window width'}
@@ -199,6 +208,8 @@ export default function App() {
       </header>
 
       {page === 'holdings' && <HoldingsPage theme={theme} onOpenAnalysis={openAnalysis} />}
+
+      {page === 'health' && <HealthPage theme={theme} />}
 
       {page === 'analyze' && (<>
       <form className="controls" onSubmit={onSubmit}>
