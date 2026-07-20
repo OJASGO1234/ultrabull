@@ -92,8 +92,15 @@ def to_series(x):
 def load_data(symbol: str, years: float = 1, start=None, end=None) -> pd.DataFrame:
     """Download OHLCV data for a symbol from Yahoo Finance.
     Either pass `years` (window ending today) or explicit `start`/`end` dates."""
+    # yfinance treats `end` as exclusive and interprets naive datetimes in the
+    # exchange's timezone — on a UTC server, end=now reads as pre-open IST and
+    # silently drops today's live bar. Pushing end a day forward keeps today's
+    # (partial, ~15-min-delayed) candle during market hours, and makes an
+    # explicit end date inclusive, which is what the range picker implies.
     if end is None:
-        end = datetime.now()
+        end = datetime.now() + timedelta(days=1)
+    else:
+        end = pd.Timestamp(end) + timedelta(days=1)
     if start is None:
         start = end - timedelta(days=365 * years + 10)
     df = yf.download(symbol, start=start, end=end, auto_adjust=True, progress=False)
