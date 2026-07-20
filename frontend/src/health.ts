@@ -72,6 +72,56 @@ export async function fetchAudit(): Promise<{ available: boolean; report?: Audit
   return res.json()
 }
 
+// ---- steward (Phase 1.5) ----
+
+export interface StewardProposal {
+  pattern: string
+  action: 'disable' | 'reenable' | 'watch'
+  confidence: 'low' | 'medium' | 'high'
+  needs_human_review?: boolean
+  rationale: string
+}
+
+export interface StewardAssessment {
+  generated_at: string
+  audit_at: string
+  model: string
+  briefing: string
+  overall: 'stable' | 'watch' | 'action_needed'
+  proposals: StewardProposal[]
+}
+
+export async function fetchSteward(): Promise<{ assessment: StewardAssessment | null; overrides: string[] }> {
+  const res = await authFetch('/api/steward')
+  if (!res.ok) throw new Error(`steward fetch failed (${res.status})`)
+  return res.json()
+}
+
+export async function runSteward(): Promise<{ ok: boolean; assessment: StewardAssessment }> {
+  const res = await authFetch('/api/steward/run', { method: 'POST' })
+  if (!res.ok) {
+    let detail = `steward run failed (${res.status})`
+    try {
+      const b = await res.json()
+      if (b?.detail) detail = b.detail
+    } catch {
+      // keep generic
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
+export async function applyOverride(pattern: string, disabled: boolean): Promise<{ ok: boolean; disabled: string[] }> {
+  const res = await authFetch('/api/steward/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pattern, disabled }),
+  })
+  if (!res.ok) throw new Error(`apply failed (${res.status})`)
+  return res.json()
+}
+
 export async function runAudit(): Promise<{ ok: boolean; generated_at: string; decayed: string[] }> {
   const res = await authFetch('/api/audit/run', { method: 'POST' })
   if (!res.ok) {

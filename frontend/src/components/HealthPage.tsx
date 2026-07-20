@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Theme } from '../theme'
 import {
-  fetchAudit, runAudit,
+  applyOverride, fetchAudit, fetchSteward, runAudit, runSteward,
   type AuditReport, type CalibrationHorizon, type PatternRow, type PatternStatus, type Stat,
+  type StewardAssessment,
 } from '../health'
 
 const HZ_LABEL: Record<string, string> = { '1d': '1 day', '1w': '1 week', '1m': '1 month' }
@@ -69,11 +72,116 @@ function CalibrationCard({ hz, name, theme: t }: { hz: CalibrationHorizon; name:
   )
 }
 
+const OVERALL_META: Record<string, { label: string; tone: 'good' | 'warn' | 'bad' }> = {
+  stable: { label: 'Stable', tone: 'good' },
+  watch: { label: 'Watch', tone: 'warn' },
+  action_needed: { label: 'Action needed', tone: 'bad' },
+}
+
+function StewardCard({
+  assessment, overrides, busy, error, onRun, onApply, theme: t,
+}: {
+  assessment: StewardAssessment | null
+  overrides: string[]
+  busy: boolean
+  error: string | null
+  onRun: () => void
+  onApply: (pattern: string, disabled: boolean) => void
+  theme: Theme
+}) {
+  const ov = OVERALL_META[assessment?.overall ?? 'watch']
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>
+          Claude's read
+          {assessment && (
+            <span className={`verdict verdict-${ov.tone}`} style={{ marginLeft: 10 }}>{ov.label}</span>
+          )}
+        </h2>
+        <span className="hover-readout">
+          {assessment && `${assessment.generated_at.slice(0, 16).replace('T', ' ')} · ${assessment.model}`}
+          {'  '}
+          <button type="button" className="btn-mini" disabled={busy} onClick={onRun}>
+            {busy ? 'Thinking…' : assessment ? 'Re-run steward' : 'Run steward'}
+          </button>
+        </span>
+      </div>
+      <p className="chart-note">
+        A Claude agent reads the audit below and proposes bounded actions — it judges decay-vs-hostile-market,
+        never recomputes the numbers, and nothing takes effect until you click Apply. It can only disable an
+        existing pattern (or revert a disable it made); the evidence-based base prunes stay untouchable.
+      </p>
+      {error && <p className="detail-warn">{error}</p>}
+      {!assessment && !busy && !error && <p className="empty">No steward assessment yet — run it.</p>}
+      {assessment && (
+        <>
+          <div className="chat-md steward-brief">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{assessment.briefing}</ReactMarkdown>
+          </div>
+          {assessment.proposals.length > 0 && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pattern</th><th>Proposal</th><th>Confidence</th><th>Rationale</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assessment.proposals.map((p) => {
+                    const isDisabled = overrides.includes(p.pattern)
+                    const canApply = p.action === 'disable' || p.action === 'reenable'
+                    return (
+                      <tr key={p.pattern}>
+                        <td><b>{p.pattern}</b></td>
+                        <td>
+                          <span className={`verdict verdict-${p.action === 'disable' ? 'bad' : p.action === 'reenable' ? 'info' : 'neutral'}`}>
+                            {p.action}
+                          </span>
+                          {p.needs_human_review && <span title="Adds risk — review carefully"> ⚠</span>}
+                        </td>
+                        <td className="cell-sub">{p.confidence}</td>
+                        <td className="cell-sub" style={{ whiteSpace: 'normal', maxWidth: 460 }}>{p.rationale}</td>
+                        <td>
+                          {isDisabled ? (
+                            <button type="button" className="btn-mini" onClick={() => onApply(p.pattern, false)}>
+                              Re-enable
+                            </button>
+                          ) : canApply && p.action === 'disable' ? (
+                            <button type="button" className="btn-mini" onClick={() => onApply(p.pattern, true)}>
+                              Apply disable
+                            </button>
+                          ) : (
+                            <span className="cell-sub">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {overrides.length > 0 && (
+            <p className="chart-note" style={{ color: t.deltaDownText }}>
+              Currently disabled by steward: <b>{overrides.join(', ')}</b> — these are excluded from live verdicts.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export function HealthPage({ theme: t }: { theme: Theme }) {
   const [report, setReport] = useState<AuditReport | null>(null)
   const [detail, setDetail] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [steward, setSteward] = useState<StewardAssessment | null>(null)
+  const [overrides, setOverrides] = useState<string[]>([])
+  const [stewardBusy, setStewardBusy] = useState(false)
+  const [stewardError, setStewardError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -88,11 +196,40 @@ export function HealthPage({ theme: t }: { theme: Theme }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
+    try {
+      const s = await fetchSteward()
+      setSteward(s.assessment)
+      setOverrides(s.overrides)
+    } catch {
+      // steward optional — audit still shows
+    }
   }, [])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const onRunSteward = async () => {
+    setStewardBusy(true)
+    setStewardError(null)
+    try {
+      const r = await runSteward()
+      setSteward(r.assessment)
+    } catch (e) {
+      setStewardError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setStewardBusy(false)
+    }
+  }
+
+  const onApply = async (pattern: string, disabled: boolean) => {
+    try {
+      const r = await applyOverride(pattern, disabled)
+      setOverrides(r.disabled)
+    } catch (e) {
+      setStewardError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   const onRun = async () => {
     setRunning(true)
@@ -130,6 +267,16 @@ export function HealthPage({ theme: t }: { theme: Theme }) {
         {error && <div className="error-banner">⚠ {error}</div>}
         {!report && !error && <p className="empty">{detail ?? 'Loading…'}</p>}
       </div>
+
+      <StewardCard
+        assessment={steward}
+        overrides={overrides}
+        busy={stewardBusy}
+        error={stewardError}
+        onRun={onRunSteward}
+        onApply={onApply}
+        theme={t}
+      />
 
       {report && (
         <>

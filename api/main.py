@@ -143,6 +143,13 @@ def build_cfg() -> dict:
         "BB_SellFade", "Breakdown20", "Breakdown55",
         "VCP_Setup",  # context only: the coil itself tested edge-less; the trade is the breakout from it
     ]
+    # steward-applied runtime disables (Phase 1.5) — human-approved, reversible,
+    # merged additively so the evidence-based base prunes are never re-enabled here
+    try:
+        from .steward import load_overrides
+        cfg["disable_patterns"] = sorted(set(cfg["disable_patterns"]) | set(load_overrides()["disabled"]))
+    except Exception:
+        pass
     cfg["gates"]["market"] = {
         "enabled": True,
         "require_market_regime": True,
@@ -1350,6 +1357,40 @@ def audit_run():
     return {"ok": True, "generated_at": stamp,
             "decayed": [p["pattern"] for p in res["report"]["pattern_decay"]["patterns"]
                         if p["status"] in ("decayed", "negative")]}
+
+
+# ---------- steward (Phase 1.5 — Claude reads the audit, proposes, human approves) ----------
+
+class OverrideRequest(BaseModel):
+    pattern: str
+    disabled: bool
+
+
+@app.get("/api/steward")
+def steward_latest():
+    from .steward import latest_steward, load_overrides
+    return {"assessment": latest_steward(), "overrides": load_overrides()["disabled"]}
+
+
+@app.post("/api/steward/run")
+def steward_run():
+    from .steward import run_steward
+    res = run_steward()
+    if not res.get("ok"):
+        raise HTTPException(status_code=503, detail=res.get("error", "steward run failed"))
+    return res
+
+
+@app.post("/api/steward/apply")
+def steward_apply(req: OverrideRequest):
+    """Human approves (or reverts) a steward proposal. Only additive disables /
+    reversals of steward-disabled patterns — base prunes stay untouchable here.
+    Invalidates the analysis cache so the change takes effect immediately."""
+    from .steward import set_override
+    ov = set_override(req.pattern.strip(), req.disabled)
+    with _cache_lock:
+        _cache.clear()  # verdicts must reflect the new pattern set
+    return {"ok": True, "disabled": ov["disabled"]}
 
 
 @app.get("/api/signals")
