@@ -201,11 +201,14 @@ export interface XirrResult {
   portfolio_xirr_pct: number | null
   dated_invested: number
   dated_current: number
-  positions: Record<string, { annualized_pct: number | null; buy_date: string | null; days_held: number | null }>
+  positions: Record<
+    string,
+    { annualized_pct: number | null; buy_date: string | null; days_held: number | null; source: 'ledger' | 'manual' | null }
+  >
 }
 
 export function fetchXirr(
-  positions: { key: string; invested: number; current_value: number; buy_date?: string | null }[],
+  positions: { key: string; yahoo_symbol?: string | null; invested: number; current_value: number; buy_date?: string | null }[],
 ): Promise<XirrResult> {
   return post('/api/xirr', { positions })
 }

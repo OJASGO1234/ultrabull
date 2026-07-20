@@ -1204,8 +1204,10 @@ def put_hold_date(req: HoldDate, request: Request):
 
 class XirrPosition(BaseModel):
     key: str
+    yahoo_symbol: str | None = None
     invested: float
     current_value: float
+    ltp: float | None = None
     buy_date: str | None = None
 
 
@@ -1215,9 +1217,12 @@ class XirrRequest(BaseModel):
 
 @app.post("/api/xirr")
 def xirr(req: XirrRequest, request: Request):
-    """Portfolio XIRR from dated positions, plus each position's annualized
-    return. Positions with no buy_date are excluded from XIRR (but the caller
-    still shows their absolute return)."""
+    """Portfolio XIRR. Exact per-symbol cashflows come from the trade ledger
+    when it has that symbol's history (each BUY/SELL a dated flow); otherwise
+    it falls back to the manually-set single buy date. Positions with neither
+    are excluded from XIRR but still counted in the absolute totals."""
+    from .ledger import ledger_flows
+
     user = getattr(request.state, "user", None) or "local"
     conn = _hold_dates_db()
     try:
@@ -1225,13 +1230,44 @@ def xirr(req: XirrRequest, request: Request):
     finally:
         conn.close()
 
+    wanted = {p.yahoo_symbol for p in req.positions if p.yahoo_symbol}
+    led = ledger_flows(wanted) if wanted else {}
+
     today = _date_cls.today()
     flows: list[tuple[_date_cls, float]] = []
     per_key: dict[str, dict] = {}
     dated_invested = dated_value = 0.0
+
     for p in req.positions:
+        entry = {"annualized_pct": None, "buy_date": None, "days_held": None, "source": None}
+        sym_flows = led.get(p.yahoo_symbol) if p.yahoo_symbol else None
+
+        if sym_flows:
+            # exact: replay every ledger fill, terminal value = current holding
+            pos_flows: list[tuple[_date_cls, float]] = []
+            for dt, signed_qty, price in sym_flows:
+                try:
+                    d = _date_cls.fromisoformat(dt)
+                except ValueError:
+                    continue
+                pos_flows.append((d, -signed_qty * price))  # BUY -> outflow, SELL -> inflow
+            term = p.current_value
+            if pos_flows and term is not None:
+                pos_flows.append((today, float(term)))
+                r = _xirr(pos_flows)
+                entry.update({
+                    "source": "ledger",
+                    "annualized_pct": round(r * 100, 2) if r is not None else None,
+                    "buy_date": min(f[0] for f in pos_flows).isoformat(),
+                })
+                flows.extend((d, a) for d, a in pos_flows[:-1])  # merge fills into portfolio
+                dated_invested += p.invested
+                dated_value += term
+                per_key[p.key] = entry
+                continue
+
         bd = p.buy_date or stored.get(p.key)
-        entry = {"annualized_pct": None, "buy_date": bd, "days_held": None}
+        entry["buy_date"] = bd
         if bd:
             try:
                 d = _date_cls.fromisoformat(bd)
@@ -1240,6 +1276,7 @@ def xirr(req: XirrRequest, request: Request):
             if d and d < today and p.invested > 0:
                 days = (today - d).days
                 entry["days_held"] = days
+                entry["source"] = "manual"
                 if days >= 1:
                     yrs = days / 365.0
                     entry["annualized_pct"] = round(((p.current_value / p.invested) ** (1 / yrs) - 1) * 100, 2)
@@ -1260,6 +1297,13 @@ def xirr(req: XirrRequest, request: Request):
         "dated_current": round(dated_value, 2),
         "positions": per_key,
     }
+
+
+@app.post("/api/ledger/poll")
+def ledger_poll():
+    """Manually trigger a Groww order poll (the systemd timer runs this daily)."""
+    from .ledger import poll_groww
+    return poll_groww()
 
 
 @app.get("/api/signals")

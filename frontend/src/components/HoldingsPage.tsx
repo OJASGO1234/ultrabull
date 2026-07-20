@@ -453,7 +453,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
         const invested = h.invested ?? (h.quantity != null && h.avg_price != null ? h.quantity * h.avg_price : null)
         const cur = h.quantity != null && price != null ? h.quantity * price : h.current_value
         return invested != null && cur != null
-          ? { key: rowKey(h, i), invested, current_value: cur, buy_date: holdDates[rowKey(h, i)] ?? null }
+          ? { key: rowKey(h, i), yahoo_symbol: h.yahoo_symbol, invested, current_value: cur, buy_date: holdDates[rowKey(h, i)] ?? null }
           : null
       })
       .filter((p): p is NonNullable<typeof p> => p != null)
@@ -821,29 +821,41 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                     {s.breakout.recent_breakout?.english && <li>{s.breakout.recent_breakout.english}</li>}
                                   </ul>
                                   {h.quantity != null && h.avg_price != null && <PositionBlock h={h} s={s} theme={t} />}
-                                  <p className="buydate-row">
-                                    <label>
-                                      Bought on{' '}
-                                      <input
-                                        type="date"
-                                        value={holdDates[key] ?? ''}
-                                        max={new Date().toISOString().slice(0, 10)}
-                                        onChange={(e) => e.target.value && setBuyDate(key, e.target.value)}
-                                      />
-                                    </label>
-                                    {xirr?.positions[key]?.annualized_pct != null && (
-                                      <span style={pnlColor(xirr.positions[key]!.annualized_pct)}>
-                                        {' '}· annualized {xirr.positions[key]!.annualized_pct! >= 0 ? '+' : ''}
-                                        {xirr.positions[key]!.annualized_pct!.toFixed(1)}%
-                                        {xirr.positions[key]?.days_held != null && (
-                                          <span className="cell-sub"> ({xirr.positions[key]!.days_held}d held)</span>
+                                  {(() => {
+                                    const xp = xirr?.positions[key]
+                                    const fromLedger = xp?.source === 'ledger'
+                                    return (
+                                      <p className="buydate-row">
+                                        {fromLedger ? (
+                                          <span>
+                                            Bought <b>{xp?.buy_date}</b>{' '}
+                                            <span className="cell-sub">(exact — from your trade ledger)</span>
+                                          </span>
+                                        ) : (
+                                          <label>
+                                            Bought on{' '}
+                                            <input
+                                              type="date"
+                                              value={holdDates[key] ?? ''}
+                                              max={new Date().toISOString().slice(0, 10)}
+                                              onChange={(e) => e.target.value && setBuyDate(key, e.target.value)}
+                                            />
+                                          </label>
                                         )}
-                                      </span>
-                                    )}
-                                    {!holdDates[key] && (
-                                      <span className="cell-sub"> — set a buy date to get annualized return &amp; portfolio XIRR</span>
-                                    )}
-                                  </p>
+                                        {xp?.annualized_pct != null && (
+                                          <span style={pnlColor(xp.annualized_pct)}>
+                                            {' '}· annualized {xp.annualized_pct >= 0 ? '+' : ''}
+                                            {xp.annualized_pct.toFixed(1)}%
+                                            {xp.days_held != null && <span className="cell-sub"> ({xp.days_held}d held)</span>}
+                                            {!fromLedger && <span className="cell-sub"> · estimated (single buy)</span>}
+                                          </span>
+                                        )}
+                                        {!fromLedger && !holdDates[key] && (
+                                          <span className="cell-sub"> — set a buy date for annualized return &amp; portfolio XIRR</span>
+                                        )}
+                                      </p>
+                                    )
+                                  })()}
                                   <div className="detail-actions">
                                     {h.yahoo_symbol && (
                                       <>
