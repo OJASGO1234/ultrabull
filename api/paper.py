@@ -115,6 +115,13 @@ def _charges(gross: float, acct: dict) -> float:
     return round(gross * (acct["brokerage_pct"] + acct["tax_pct"]) / 100.0, 2)
 
 
+def _executor_status(conn: sqlite3.Connection, user: str) -> dict:
+    import threading
+    alive = any(t.name == "paper-executor" and t.is_alive() for t in threading.enumerate())
+    pending = conn.execute("SELECT COUNT(*) FROM paper_orders WHERE username=? AND status='pending'", (user,)).fetchone()[0]
+    return {"running": alive, "pending_orders": int(pending)}
+
+
 def _snapshot(conn: sqlite3.Connection, user: str, equity: float, cash: float, holdings: float) -> None:
     with conn:
         conn.execute("INSERT OR REPLACE INTO paper_equity (username, d, equity, cash, holdings) VALUES (?,?,?,?,?)",
@@ -202,6 +209,7 @@ def _state(conn: sqlite3.Connection, user: str) -> dict:
         "unrealized_pnl": round(holdings - sum(p["cost_basis"] for p in pos_out), 2),
         "positions": pos_out,
         "market_open": market_open(),
+        "executor": _executor_status(conn, user),
         "stats": {
             "closed_trades": len(closed),
             "win_rate": round(len(wins) / len(closed), 3) if closed else None,

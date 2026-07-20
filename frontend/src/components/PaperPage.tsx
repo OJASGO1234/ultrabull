@@ -179,6 +179,14 @@ export function PaperPage({ theme: t }: { theme: Theme }) {
           <button type="button" className="btn-ghost" onClick={onReset}>Reset account</button>
         </div>
         <p className="chart-note">
+          Auto-executor:{' '}
+          <b style={{ color: s.executor.running ? t.deltaUpText : t.deltaDownText }}>
+            {s.executor.running ? 'running' : 'stopped'}
+          </b>{' '}
+          · market {s.market_open ? 'open (fills live)' : 'closed (fills resume at open)'} ·{' '}
+          {s.executor.pending_orders} pending order{s.executor.pending_orders === 1 ? '' : 's'}.
+        </p>
+        <p className="chart-note">
           Forward validation with real live prices and no real money. Equity / ETF / REIT delivery only. Costs below
           are charged on every fill and baked into P&L, so what you see is after-cost. {s.stats.kill_breached && (
             <b style={{ color: t.deltaDownText }}> ⚠ Kill-line breached: drawdown {s.stats.current_drawdown_pct}% ≥ {s.config.kill_drawdown_pct}%.</b>

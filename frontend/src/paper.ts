@@ -36,6 +36,7 @@ export interface PaperState {
   unrealized_pnl: number
   positions: PaperPosition[]
   market_open: boolean
+  executor: { running: boolean; pending_orders: number }
   stats: {
     closed_trades: number
     win_rate: number | null
