@@ -72,6 +72,19 @@ def _db() -> sqlite3.Connection:
           cash REAL NOT NULL,
           holdings REAL NOT NULL,
           PRIMARY KEY (username, d));
+        CREATE TABLE IF NOT EXISTS paper_orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL,
+          symbol TEXT NOT NULL,
+          yahoo_symbol TEXT NOT NULL,
+          side TEXT NOT NULL,
+          qty REAL NOT NULL,
+          limit_price REAL NOT NULL,
+          trigger TEXT NOT NULL,          -- 'lte' or 'gte' (LTP condition to fill)
+          stop REAL, target REAL, note TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',   -- pending / filled / cancelled / failed
+          created_at TEXT NOT NULL,
+          resolved_at TEXT, fill_price REAL, fail_reason TEXT);
         """
     )
     return conn
@@ -237,6 +250,53 @@ def paper_config(req: ConfigReq, request: Request):
         conn.close()
 
 
+def _fill(conn: sqlite3.Connection, user: str, sym: str, ysym: str | None, side: str,
+          qty: float, price: float, stop: float | None, target: float | None, note: str | None) -> float | None:
+    """Execute a fill against the account. Shared by manual trades and the
+    auto-executor. Raises ValueError on guard failures (insufficient cash,
+    overselling); the caller decides how to surface it."""
+    acct = _account(conn, user)
+    gross = qty * price
+    charges = _charges(gross, acct)
+    pos = conn.execute("SELECT qty, cost_basis FROM paper_positions WHERE username=? AND symbol=?",
+                       (user, sym)).fetchone()
+    realized = None
+    with conn:
+        if side == "BUY":
+            if acct["cash"] < gross + charges:
+                raise ValueError(f"insufficient paper cash (need ₹{gross + charges:,.0f}, have ₹{acct['cash']:,.0f})")
+            new_qty = (pos[0] if pos else 0) + qty
+            new_basis = (pos[1] if pos else 0) + gross + charges
+            conn.execute(
+                "INSERT INTO paper_positions (username,symbol,yahoo_symbol,qty,cost_basis,opened_at,stop,target) "
+                "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(username,symbol) DO UPDATE SET "
+                "qty=?, cost_basis=?, yahoo_symbol=COALESCE(?,yahoo_symbol), stop=COALESCE(?,stop), target=COALESCE(?,target)",
+                (user, sym, ysym, new_qty, new_basis, datetime.now().isoformat(timespec="seconds"),
+                 stop, target, new_qty, new_basis, ysym, stop, target))
+            conn.execute("UPDATE paper_account SET cash=cash-? WHERE username=?", (gross + charges, user))
+        else:  # SELL
+            if not pos or pos[0] < qty:
+                raise ValueError(f"can't sell {qty}; hold {pos[0] if pos else 0}")
+            avg = pos[1] / pos[0]
+            proceeds = gross - charges
+            realized = round(proceeds - avg * qty, 2)
+            rem_qty = pos[0] - qty
+            rem_basis = pos[1] - avg * qty
+            if rem_qty <= 1e-9:
+                conn.execute("DELETE FROM paper_positions WHERE username=? AND symbol=?", (user, sym))
+            else:
+                conn.execute("UPDATE paper_positions SET qty=?, cost_basis=? WHERE username=? AND symbol=?",
+                             (rem_qty, rem_basis, user, sym))
+            conn.execute("UPDATE paper_account SET cash=cash+?, realized_pnl=realized_pnl+? WHERE username=?",
+                         (proceeds, realized, user))
+        conn.execute(
+            "INSERT INTO paper_trades (username,ts,symbol,yahoo_symbol,side,qty,price,gross,charges,realized_pnl,note) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (user, datetime.now().isoformat(timespec="seconds"), sym, ysym, side, qty, price,
+             round(gross, 2), charges, realized, note))
+    return realized
+
+
 @router.post("/trade")
 def paper_trade(req: TradeReq, request: Request):
     user = _user(request)
@@ -250,7 +310,6 @@ def paper_trade(req: TradeReq, request: Request):
 
     conn = _db()
     try:
-        acct = _account(conn, user)
         price = req.price
         if price is None:
             from .live import ltp_map
@@ -260,48 +319,168 @@ def paper_trade(req: TradeReq, request: Request):
             if price is None:
                 raise HTTPException(status_code=502, detail="no live price — supply a price or retry in market hours")
         price = float(price)
-        gross = req.qty * price
-        charges = _charges(gross, acct)
-
-        pos = conn.execute("SELECT qty, cost_basis FROM paper_positions WHERE username=? AND symbol=?",
-                           (user, sym)).fetchone()
-        realized = None
-        with conn:
-            if side == "BUY":
-                if acct["cash"] < gross + charges:
-                    raise HTTPException(status_code=422, detail=f"insufficient paper cash (need ₹{gross + charges:,.0f}, have ₹{acct['cash']:,.0f})")
-                new_qty = (pos[0] if pos else 0) + req.qty
-                new_basis = (pos[1] if pos else 0) + gross + charges
-                conn.execute(
-                    "INSERT INTO paper_positions (username,symbol,yahoo_symbol,qty,cost_basis,opened_at,stop,target) "
-                    "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(username,symbol) DO UPDATE SET "
-                    "qty=?, cost_basis=?, yahoo_symbol=COALESCE(?,yahoo_symbol), stop=COALESCE(?,stop), target=COALESCE(?,target)",
-                    (user, sym, ysym, new_qty, new_basis, datetime.now().isoformat(timespec="seconds"),
-                     req.stop, req.target, new_qty, new_basis, ysym, req.stop, req.target))
-                conn.execute("UPDATE paper_account SET cash=cash-? WHERE username=?", (gross + charges, user))
-            else:  # SELL
-                if not pos or pos[0] < req.qty:
-                    raise HTTPException(status_code=422, detail=f"can't sell {req.qty}; hold {pos[0] if pos else 0}")
-                avg = pos[1] / pos[0]
-                proceeds = gross - charges
-                realized = round(proceeds - avg * req.qty, 2)
-                rem_qty = pos[0] - req.qty
-                rem_basis = pos[1] - avg * req.qty
-                if rem_qty <= 1e-9:
-                    conn.execute("DELETE FROM paper_positions WHERE username=? AND symbol=?", (user, sym))
-                else:
-                    conn.execute("UPDATE paper_positions SET qty=?, cost_basis=? WHERE username=? AND symbol=?",
-                                 (rem_qty, rem_basis, user, sym))
-                conn.execute("UPDATE paper_account SET cash=cash+?, realized_pnl=realized_pnl+? WHERE username=?",
-                             (proceeds, realized, user))
-            conn.execute(
-                "INSERT INTO paper_trades (username,ts,symbol,yahoo_symbol,side,qty,price,gross,charges,realized_pnl,note) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (user, datetime.now().isoformat(timespec="seconds"), sym, ysym, side, req.qty, price,
-                 round(gross, 2), charges, realized, req.note))
+        try:
+            realized = _fill(conn, user, sym, ysym, side, req.qty, price, req.stop, req.target, req.note)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
         st = _state(conn, user)
         _snapshot(conn, user, st["equity"], st["cash"], st["holdings_value"])
-        return {"ok": True, "price": price, "charges": charges, "realized_pnl": realized, "state": st}
+        return {"ok": True, "price": price,
+                "charges": _charges(req.qty * price, _account(conn, user)),
+                "realized_pnl": realized, "state": st}
+    finally:
+        conn.close()
+
+
+# ---------- pending orders + the auto-executor ----------
+
+class OrderReq(BaseModel):
+    symbol: str
+    yahoo_symbol: str
+    side: str          # BUY / SELL
+    qty: float
+    limit_price: float
+    stop: float | None = None
+    target: float | None = None
+    note: str | None = None
+
+
+@router.post("/order")
+def place_order(req: OrderReq, request: Request):
+    """Queue a pending order that the executor fills when the live price hits
+    limit_price. BUY fills at-or-below; SELL auto-detects: above the current
+    price = take-profit (fill at-or-above), below = stop-loss (fill at-or-below)."""
+    user = _user(request)
+    side = req.side.strip().upper()
+    if side not in ("BUY", "SELL") or req.qty <= 0 or req.limit_price <= 0:
+        raise HTTPException(status_code=422, detail="need BUY/SELL, positive qty and limit_price")
+    sym = req.symbol.strip().upper()
+    ysym = req.yahoo_symbol.strip().upper()
+
+    from .live import ltp_map
+    cur = ltp_map([ysym]).get(ysym)
+    if side == "BUY":
+        trigger = "lte"
+    else:
+        trigger = "gte" if (cur is None or req.limit_price >= cur) else "lte"
+
+    conn = _db()
+    try:
+        with conn:
+            cur_id = conn.execute(
+                "INSERT INTO paper_orders (username,symbol,yahoo_symbol,side,qty,limit_price,trigger,stop,target,note,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (user, sym, ysym, side, req.qty, req.limit_price, trigger, req.stop, req.target, req.note,
+                 datetime.now().isoformat(timespec="seconds"))).lastrowid
+        kind = "limit buy" if side == "BUY" else ("take-profit" if trigger == "gte" else "stop-loss")
+        return {"ok": True, "id": cur_id, "trigger": trigger, "kind": kind, "current_price": cur}
+    finally:
+        conn.close()
+
+
+@router.get("/orders")
+def list_orders(request: Request):
+    user = _user(request)
+    conn = _db()
+    try:
+        rows = conn.execute(
+            "SELECT id,symbol,yahoo_symbol,side,qty,limit_price,trigger,stop,target,status,created_at,resolved_at,fill_price,fail_reason "
+            "FROM paper_orders WHERE username=? AND status='pending' ORDER BY id DESC", (user,)).fetchall()
+        keys = ["id", "symbol", "yahoo_symbol", "side", "qty", "limit_price", "trigger", "stop", "target",
+                "status", "created_at", "resolved_at", "fill_price", "fail_reason"]
+        return {"orders": [dict(zip(keys, r)) for r in rows]}
+    finally:
+        conn.close()
+
+
+@router.post("/order/{order_id}/cancel")
+def cancel_order(order_id: int, request: Request):
+    user = _user(request)
+    conn = _db()
+    try:
+        with conn:
+            n = conn.execute("UPDATE paper_orders SET status='cancelled', resolved_at=? "
+                             "WHERE id=? AND username=? AND status='pending'",
+                             (datetime.now().isoformat(timespec="seconds"), order_id, user)).rowcount
+        if not n:
+            raise HTTPException(status_code=404, detail="no such pending order")
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
+def check_and_fill() -> int:
+    """One executor pass: fill every pending order whose live price condition is
+    met. Returns the number filled. Safe to call repeatedly; skips silently on
+    any data hiccup."""
+    from .live import ltp_map, market_open
+    if not market_open():
+        return 0
+    conn = _db()
+    filled = 0
+    try:
+        pending = conn.execute(
+            "SELECT id,username,symbol,yahoo_symbol,side,qty,limit_price,trigger,stop,target,note "
+            "FROM paper_orders WHERE status='pending'").fetchall()
+        if not pending:
+            return 0
+        live = ltp_map(sorted({p[3] for p in pending}))
+        now = datetime.now().isoformat(timespec="seconds")
+        for oid, user, sym, ysym, side, qty, limit, trig, stop, target, note in pending:
+            ltp = live.get(ysym)
+            if ltp is None:
+                continue
+            hit = (ltp <= limit) if trig == "lte" else (ltp >= limit)
+            if not hit:
+                continue
+            try:
+                _fill(conn, user, sym, ysym, side, qty, float(limit), stop, target, note)
+                with conn:
+                    conn.execute("UPDATE paper_orders SET status='filled', resolved_at=?, fill_price=? WHERE id=?",
+                                 (now, limit, oid))
+                filled += 1
+            except ValueError as e:
+                with conn:
+                    conn.execute("UPDATE paper_orders SET status='failed', resolved_at=?, fail_reason=? WHERE id=?",
+                                 (now, str(e), oid))
+        return filled
+    except Exception:
+        return filled
+    finally:
+        conn.close()
+
+
+_executor_started = False
+
+
+def start_executor(interval: float = 12.0) -> None:
+    """Start the background auto-executor once. Polls live prices and fills
+    triggered pending orders during market hours."""
+    global _executor_started
+    if _executor_started:
+        return
+    _executor_started = True
+
+    import threading
+    import time
+
+    def _loop():
+        while True:
+            try:
+                n = check_and_fill()
+            except Exception:
+                n = 0
+            time.sleep(interval if _any_pending() else 60.0)
+
+    threading.Thread(target=_loop, daemon=True, name="paper-executor").start()
+
+
+def _any_pending() -> bool:
+    conn = _db()
+    try:
+        return conn.execute("SELECT 1 FROM paper_orders WHERE status='pending' LIMIT 1").fetchone() is not None
+    except Exception:
+        return False
     finally:
         conn.close()
 

@@ -79,6 +79,13 @@ app.include_router(live_router)
 app.include_router(groww_router)
 app.include_router(paper_router)
 
+
+@app.on_event("startup")
+def _start_paper_executor():
+    """Background loop that fills pending paper orders when live prices hit."""
+    from .paper import start_executor
+    start_executor()
+
 # ---------- auth (enforced only when ULTRABULL_AUTH=1 — i.e. in production) ----------
 
 AUTH_ENABLED = os.getenv("ULTRABULL_AUTH", "0") == "1"

@@ -5,8 +5,8 @@ import type { Theme } from '../theme'
 import { fmt } from './chart'
 import { makeChart } from './chart'
 import {
-  fetchPaper, fetchPaperHistory, paperTrade, resetPaper, setPaperConfig,
-  type PaperHistory, type PaperState,
+  cancelOrder, fetchPaper, fetchPaperHistory, listOrders, paperTrade, resetPaper, setPaperConfig,
+  type PaperHistory, type PaperState, type PendingOrder,
 } from '../paper'
 
 function EquityCurve({ data, theme: t }: { data: { date: string; equity: number }[]; theme: Theme }) {
@@ -30,6 +30,7 @@ function EquityCurve({ data, theme: t }: { data: { date: string; equity: number 
 export function PaperPage({ theme: t }: { theme: Theme }) {
   const [state, setState] = useState<PaperState | null>(null)
   const [history, setHistory] = useState<PaperHistory | null>(null)
+  const [orders, setOrders] = useState<PendingOrder[]>([])
   const [error, setError] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
 
@@ -67,6 +68,11 @@ export function PaperPage({ theme: t }: { theme: Theme }) {
       setHistory(await fetchPaperHistory())
     } catch {
       // history optional
+    }
+    try {
+      setOrders((await listOrders()).orders)
+    } catch {
+      // orders optional
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -239,6 +245,38 @@ export function PaperPage({ theme: t }: { theme: Theme }) {
           </div>
         )}
       </div>
+
+      {orders.length > 0 && (
+        <div className="card">
+          <h2>Pending orders ({orders.length})</h2>
+          <p className="chart-note">
+            The auto-executor polls live prices ~every 12s during market hours and fills these when the price is hit.
+          </p>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Symbol</th><th>Type</th><th className="num">Qty</th><th className="num">Fills at ₹</th><th>Placed</th><th></th></tr></thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id}>
+                    <td><b>{o.symbol}</b></td>
+                    <td>
+                      {o.side === 'BUY' ? 'Limit buy (≤)' : o.trigger === 'gte' ? 'Take-profit (≥)' : 'Stop-loss (≤)'}
+                    </td>
+                    <td className="num">{fmt.int(o.qty)}</td>
+                    <td className="num">{fmt.price(o.limit_price)}</td>
+                    <td className="cell-sub">{o.created_at.slice(0, 16).replace('T', ' ')}</td>
+                    <td>
+                      <button type="button" className="btn-mini" onClick={async () => { await cancelOrder(o.id); await load() }}>
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>Performance</h2>

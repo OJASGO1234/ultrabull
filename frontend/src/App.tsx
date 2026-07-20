@@ -13,6 +13,7 @@ import { ByPatternTable, DetectionsList, EventsTable, LevelsTable, SignalsTable,
 import { ContextCard } from './components/ContextCard'
 import { OutlookCard } from './components/OutlookCard'
 import { AdviceCard } from './components/AdviceCard'
+import { PaperTradeCard } from './components/PaperTradeCard'
 import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
 import { KeyIndicators } from './components/KeyIndicators'
@@ -289,6 +290,14 @@ export default function App() {
           {data.advice && <AdviceCard advice={data.advice} outlook={data.outlook} theme={theme} />}
 
           {data.key_indicators && <KeyIndicators ki={data.key_indicators} theme={theme} />}
+
+          <PaperTradeCard
+            symbol={data.symbol}
+            live={liveQuote}
+            advice={data.advice}
+            lastClose={data.ohlcv.length ? data.ohlcv[data.ohlcv.length - 1].close : null}
+            theme={theme}
+          />
 
           {data.outlook && <OutlookCard outlook={data.outlook} theme={theme} />}
 

@@ -118,3 +118,55 @@ export async function paperTrade(t: TradeInput): Promise<{ ok: boolean; price: n
 export function resetPaper(): Promise<{ ok: boolean }> {
   return authFetch('/api/paper/reset', { method: 'POST' }).then((r) => r.json())
 }
+
+// ---- pending (limit / stop) orders, filled automatically by the executor ----
+
+export interface PendingOrder {
+  id: number
+  symbol: string
+  yahoo_symbol: string
+  side: string
+  qty: number
+  limit_price: number
+  trigger: 'lte' | 'gte'
+  stop: number | null
+  target: number | null
+  status: string
+  created_at: string
+}
+
+export async function placeOrder(o: {
+  symbol: string
+  yahoo_symbol: string
+  side: 'BUY' | 'SELL'
+  qty: number
+  limit_price: number
+  stop?: number | null
+  target?: number | null
+  note?: string | null
+}): Promise<{ ok: boolean; id: number; trigger: string; kind: string; current_price: number | null }> {
+  const res = await authFetch('/api/paper/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(o),
+  })
+  if (!res.ok) {
+    let detail = `order failed (${res.status})`
+    try {
+      const b = await res.json()
+      if (b?.detail) detail = b.detail
+    } catch {
+      // keep generic
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
+export function listOrders(): Promise<{ orders: PendingOrder[] }> {
+  return authFetch('/api/paper/orders').then((r) => r.json())
+}
+
+export function cancelOrder(id: number): Promise<{ ok: boolean }> {
+  return authFetch(`/api/paper/order/${id}/cancel`, { method: 'POST' }).then((r) => r.json())
+}
