@@ -1631,12 +1631,20 @@ def claude_takes(symbols: str = Query(..., description="Comma-separated Yahoo sy
 INTRADAY_INTERVALS = {"5m", "15m", "30m", "60m", "90m"}
 
 
-def run_intraday(symbol: str, interval: str) -> dict:
+def run_intraday(symbol: str, interval: str, years: float = 1.0,
+                 start: str | None = None, end: str | None = None) -> dict:
     """Lighter, timeframe-honest pipeline for intraday bars: price + indicators
-    + S/R levels + raw pattern sightings. The daily-only machinery (base-rate
-    outlook, calibrated probabilities, the backtest, the validated-edge verdicts)
-    is deliberately NULL here — it was fit on daily bars and does not transfer."""
-    df = load_data(symbol, interval=interval)
+    + S/R levels + raw pattern sightings, over the requested window (capped to
+    what the data source serves for the interval). The daily-only machinery
+    (base-rate outlook, calibration, backtest, validated-edge verdicts) is
+    deliberately NULL — it was fit on daily bars and does not transfer."""
+    from stock_explorer import _INTRADAY_MAX_DAYS
+    cap = _INTRADAY_MAX_DAYS.get(interval, 60)
+    req_days = (pd.Timestamp(end) - pd.Timestamp(start)).days if start else int(round(365 * years))
+    cap_note = (f"{interval} history is limited to ~{cap} days by the data source; "
+                f"showing the most recent {cap} days." if req_days > cap else None)
+
+    df = load_data(symbol, years=years, start=start, end=end, interval=interval)
     ind = compute_indicators(df)
     df_ohlcv = extract_symbol_df(df, symbol=symbol, case="title")
     ind_df = build_ind_df_from_vbt(df_ohlcv, ind)
@@ -1679,7 +1687,8 @@ def run_intraday(symbol: str, interval: str) -> dict:
     macd_hist = ind_df["MACD"] - ind_df["MACD_signal"]
     return {
         "symbol": symbol, "interval": interval, "intraday": True,
-        "years": 0, "bars": len(df_ohlcv),
+        "cap_note": cap_note,
+        "years": years, "bars": len(df_ohlcv),
         "last_date": pd.Timestamp(df_ohlcv.index[-1]).isoformat(),
         "ohlcv": _ohlcv_rows_t(df_ohlcv, tf),
         "indicators": {
@@ -1714,13 +1723,13 @@ def analyze(
         raise HTTPException(status_code=422, detail="Empty symbol")
     if interval != "1d" and interval not in INTRADAY_INTERVALS:
         raise HTTPException(status_code=422, detail=f"interval must be 1d or one of {sorted(INTRADAY_INTERVALS)}")
-    if interval != "1d":
-        try:
-            return {**run_intraday(symbol, interval), "cached": False}
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
     if start and end and start >= end:
         raise HTTPException(status_code=422, detail="start must be before end")
+    if interval != "1d":
+        try:
+            return {**run_intraday(symbol, interval, years=years, start=start, end=end), "cached": False}
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
     try:
         result, was_cached = cached_analysis(symbol, years, start, end)
     except ValueError as e:

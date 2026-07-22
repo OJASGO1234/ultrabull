@@ -268,6 +268,7 @@ export interface AnalysisResponse {
   last_date: string
   interval?: string
   intraday?: boolean
+  cap_note?: string | null
   ohlcv: OhlcvRow[]
   indicators: {
     ma20: Point[]

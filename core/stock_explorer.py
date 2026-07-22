@@ -111,10 +111,16 @@ def load_data(symbol: str, years: float = 1, start=None, end=None, interval: str
         end = pd.Timestamp(end) + timedelta(days=1)
 
     if interval != "1d":
-        # intraday: bound the window to what yfinance will serve for this interval
-        want = _INTRADAY_DEFAULT_DAYS.get(interval, 30)
+        # intraday: honor the requested window (years or explicit start), but
+        # cap it to what yfinance will actually serve for this interval
         cap = _INTRADAY_MAX_DAYS.get(interval, 60)
-        days = min(want if start is None else max(1, (pd.Timestamp(end) - pd.Timestamp(start)).days), cap)
+        if start is not None:
+            req = max(1, (pd.Timestamp(end) - pd.Timestamp(start)).days)
+        elif years:
+            req = int(round(365 * years))
+        else:
+            req = _INTRADAY_DEFAULT_DAYS.get(interval, 30)
+        days = min(req, cap)
         start = pd.Timestamp(end) - timedelta(days=days)
     elif start is None:
         start = end - timedelta(days=365 * years + 10)

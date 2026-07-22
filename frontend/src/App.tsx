@@ -120,13 +120,11 @@ export default function App() {
     e.preventDefault()
     const s = symbol.trim().toUpperCase()
     if (!s || loading) return
-    if (interval !== '1d') {
-      void run(s, {}, interval) // intraday ignores the daily range; window is interval-bounded
-    } else if (rangeSel === 'custom') {
+    if (rangeSel === 'custom') {
       if (!fromDate) return
-      void run(s, { start: fromDate, end: toDate || undefined })
+      void run(s, { start: fromDate, end: toDate || undefined }, interval)
     } else {
-      void run(s, { years: Number(rangeSel) })
+      void run(s, { years: Number(rangeSel) }, interval)
     }
   }
 
@@ -143,6 +141,7 @@ export default function App() {
       switchPage('analyze')
       setSymbol(s)
       setRangeSel('1')
+      setInterval('1d')
       void run(s, { years: 1 })
     },
     [run, switchPage],
@@ -244,14 +243,12 @@ export default function App() {
           <option value="15m">15 min</option>
           <option value="5m">5 min</option>
         </select>
-        {interval === '1d' && (
-          <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="History window">
-            {RANGE_PRESETS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        )}
-        {interval === '1d' && rangeSel === 'custom' && (
+        <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="History window">
+          {RANGE_PRESETS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        {rangeSel === 'custom' && (
           <>
             <input
               type="date"
@@ -309,6 +306,7 @@ export default function App() {
               and the validated-edge verdicts are <b>hidden here</b> — they were fit on daily bars and don't transfer to
               intraday. Live order flow, market depth, deals and paper trading below are timeframe-independent and still
               apply. Switch to <b>Daily</b> for the full analysis.
+              {data.cap_note && <><br /><b>Note:</b> {data.cap_note}</>}
             </div>
           )}
 
