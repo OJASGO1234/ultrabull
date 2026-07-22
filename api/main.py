@@ -241,6 +241,31 @@ def _ohlcv_rows(df: pd.DataFrame) -> list[dict]:
     return out
 
 
+def _ts_intraday(ts) -> int:
+    """Naive IST bar timestamp -> UTC epoch seconds (lightweight-charts time)."""
+    return int(pd.Timestamp(ts).tz_localize("Asia/Kolkata").timestamp())
+
+
+def _series_points_t(s: pd.Series, tf) -> list[dict]:
+    out = []
+    for ts, v in s.items():
+        f = _num(v)
+        if f is not None:
+            out.append({"time": tf(ts), "value": f})
+    return out
+
+
+def _ohlcv_rows_t(df: pd.DataFrame, tf) -> list[dict]:
+    out = []
+    for ts, r in df.iterrows():
+        o, h, l, c = _num(r["Open"]), _num(r["High"]), _num(r["Low"]), _num(r["Close"])
+        if None in (o, h, l, c):
+            continue
+        out.append({"time": tf(ts), "open": o, "high": h, "low": l, "close": c,
+                    "volume": _num(r["Volume"]) or 0.0})
+    return out
+
+
 def _bar_date(df_ohlcv: pd.DataFrame, bar: int) -> str | None:
     if bar is None or bar < 0 or bar >= len(df_ohlcv):
         return None
@@ -1603,16 +1628,97 @@ def claude_takes(symbols: str = Query(..., description="Comma-separated Yahoo sy
     return {"takes": out}
 
 
+INTRADAY_INTERVALS = {"5m", "15m", "30m", "60m", "90m"}
+
+
+def run_intraday(symbol: str, interval: str) -> dict:
+    """Lighter, timeframe-honest pipeline for intraday bars: price + indicators
+    + S/R levels + raw pattern sightings. The daily-only machinery (base-rate
+    outlook, calibrated probabilities, the backtest, the validated-edge verdicts)
+    is deliberately NULL here — it was fit on daily bars and does not transfer."""
+    df = load_data(symbol, interval=interval)
+    ind = compute_indicators(df)
+    df_ohlcv = extract_symbol_df(df, symbol=symbol, case="title")
+    ind_df = build_ind_df_from_vbt(df_ohlcv, ind)
+    tf = _ts_intraday
+
+    empty_dets = pd.DataFrame(columns=["date", "pattern", "score", "strength", "regime", "notes", "params"])
+    try:
+        detections = run_all_patterns(df_ohlcv, ind_df, CFG)
+    except ValueError:
+        detections = empty_dets
+    if detections is None or detections.empty:
+        det_enriched = empty_dets.assign(direction=None, alignment=None, qualified=False)
+    else:
+        det_enriched = enrich_detections(detections, df_ohlcv, ind_df, symbol, ctx=None)
+        det_enriched = det_enriched[det_enriched["date"] >= warmup_cutoff(ind_df)]
+
+    detections_json = []
+    for r in det_enriched.itertuples(index=False):
+        detections_json.append({
+            "date": tf(getattr(r, "date")),
+            "pattern": getattr(r, "pattern"),
+            "score": _num(getattr(r, "score", None)),
+            "strength": getattr(r, "strength", None),
+            "direction": getattr(r, "direction", None),
+            "alignment": getattr(r, "alignment", None),
+            "qualified": bool(getattr(r, "qualified", False)),
+            "english": getattr(r, "english", None),
+            "side": None, "ref_close": None, "sl_est": None, "tp_est": None,
+        })
+
+    try:
+        look = min(len(df_ohlcv), 400)
+        raw_levels = find_levels(df_ohlcv.iloc[-look:], ind_df.iloc[-look:])
+    except Exception:
+        raw_levels = []
+    levels_json = [{"price": lv["price"], "kind": lv["kind"], "touches": lv["touches"],
+                    "strength": _num(lv["strength"]), "last_touch": _date(lv["last_touch"]),
+                    "source": lv["source"], "distance_pct": _num(lv["distance_pct"])} for lv in raw_levels]
+
+    macd_hist = ind_df["MACD"] - ind_df["MACD_signal"]
+    return {
+        "symbol": symbol, "interval": interval, "intraday": True,
+        "years": 0, "bars": len(df_ohlcv),
+        "last_date": pd.Timestamp(df_ohlcv.index[-1]).isoformat(),
+        "ohlcv": _ohlcv_rows_t(df_ohlcv, tf),
+        "indicators": {
+            "ma20": _series_points_t(ind_df["MA20"], tf), "ma50": _series_points_t(ind_df["MA50"], tf),
+            "bb_upper": _series_points_t(ind_df["BB_upper"], tf), "bb_lower": _series_points_t(ind_df["BB_lower"], tf),
+            "rsi": _series_points_t(ind_df["RSI"], tf), "atr": _series_points_t(ind_df["ATR"], tf),
+            "macd": _series_points_t(ind_df["MACD"], tf), "macd_signal": _series_points_t(ind_df["MACD_signal"], tf),
+            "macd_hist": _series_points_t(macd_hist, tf),
+            "adx": _series_points_t(ind_df["ADX"], tf) if "ADX" in ind_df.columns else [],
+        },
+        "levels": levels_json,
+        "detections": detections_json,
+        # daily-only — intentionally absent on intraday
+        "events": [], "context": None, "timing": None, "outlook": None, "advice": None,
+        "key_indicators": None, "fundamentals": None, "interpretations": None, "indexes": [],
+        "signals": [], "trades": [], "equity": [], "metrics": {}, "by_pattern": [],
+        "audit": {"checked": 0, "mismatch_count": 0, "ok": True}, "signal_summary": {},
+        "summary_md": "",
+    }
+
+
 @app.get("/api/analyze/{symbol}")
 def analyze(
     symbol: str,
     years: float = Query(0.5, gt=0.0, le=10.0),
     start: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     end: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    interval: str = Query("1d"),
 ):
     symbol = symbol.strip().upper()
     if not symbol:
         raise HTTPException(status_code=422, detail="Empty symbol")
+    if interval != "1d" and interval not in INTRADAY_INTERVALS:
+        raise HTTPException(status_code=422, detail=f"interval must be 1d or one of {sorted(INTRADAY_INTERVALS)}")
+    if interval != "1d":
+        try:
+            return {**run_intraday(symbol, interval), "cached": False}
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
     if start and end and start >= end:
         raise HTTPException(status_code=422, detail="start must be before end")
     try:

@@ -1,10 +1,11 @@
+// time is a date string ('YYYY-MM-DD') on daily bars, or a UNIX-seconds number on intraday
 export interface Point {
-  time: string
+  time: string | number
   value: number
 }
 
 export interface OhlcvRow {
-  time: string
+  time: string | number
   open: number
   high: number
   low: number
@@ -265,6 +266,8 @@ export interface AnalysisResponse {
   years: number
   bars: number
   last_date: string
+  interval?: string
+  intraday?: boolean
   ohlcv: OhlcvRow[]
   indicators: {
     ma20: Point[]

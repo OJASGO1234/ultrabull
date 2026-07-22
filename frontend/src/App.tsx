@@ -60,6 +60,7 @@ export default function App() {
   }, [])
   const [symbol, setSymbol] = useState('HINDCOPPER.NS')
   const [rangeSel, setRangeSel] = useState('0.5')
+  const [interval, setInterval] = useState('1d')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [loading, setLoading] = useState(false)
@@ -69,11 +70,11 @@ export default function App() {
   const liveState = useLiveQuotes(active && page === 'analyze' ? [active.symbol] : [])
   const liveQuote = active ? liveState.quotes[active.symbol] ?? null : null
 
-  const run = useCallback(async (s: string, range: RangeQuery) => {
+  const run = useCallback(async (s: string, range: RangeQuery, iv = '1d') => {
     setLoading(true)
     setError(null)
     try {
-      setData(await fetchAnalysis(s, range))
+      setData(await fetchAnalysis(s, range, iv))
       setActive({ symbol: s, range })
       const url = new URL(window.location.href)
       url.searchParams.set('symbol', s)
@@ -119,7 +120,9 @@ export default function App() {
     e.preventDefault()
     const s = symbol.trim().toUpperCase()
     if (!s || loading) return
-    if (rangeSel === 'custom') {
+    if (interval !== '1d') {
+      void run(s, {}, interval) // intraday ignores the daily range; window is interval-bounded
+    } else if (rangeSel === 'custom') {
       if (!fromDate) return
       void run(s, { start: fromDate, end: toDate || undefined })
     } else {
@@ -234,12 +237,21 @@ export default function App() {
           aria-label="Ticker symbol"
           spellCheck={false}
         />
-        <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="History window">
-          {RANGE_PRESETS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
+        <select value={interval} onChange={(e) => setInterval(e.target.value)} aria-label="Granularity">
+          <option value="1d">Daily</option>
+          <option value="60m">1 hour</option>
+          <option value="30m">30 min</option>
+          <option value="15m">15 min</option>
+          <option value="5m">5 min</option>
         </select>
-        {rangeSel === 'custom' && (
+        {interval === '1d' && (
+          <select value={rangeSel} onChange={(e) => setRangeSel(e.target.value)} aria-label="History window">
+            {RANGE_PRESETS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        )}
+        {interval === '1d' && rangeSel === 'custom' && (
           <>
             <input
               type="date"
@@ -290,6 +302,16 @@ export default function App() {
             <AuditBadge audit={data.audit} />
           </section>
 
+          {data.intraday && (
+            <div className="card intraday-banner">
+              <b>Intraday view ({data.interval}).</b> Showing price structure, indicators, support/resistance and
+              pattern sightings on {data.interval} bars. The base-rate outlook, calibrated probabilities, the backtest
+              and the validated-edge verdicts are <b>hidden here</b> — they were fit on daily bars and don't transfer to
+              intraday. Live order flow, market depth, deals and paper trading below are timeframe-independent and still
+              apply. Switch to <b>Daily</b> for the full analysis.
+            </div>
+          )}
+
           {data.advice && <AdviceCard advice={data.advice} outlook={data.outlook} theme={theme} />}
 
           {data.key_indicators && <KeyIndicators ki={data.key_indicators} theme={theme} />}
@@ -333,43 +355,47 @@ export default function App() {
             <MacdChart data={data} theme={theme} />
           </div>
 
-          <EquityChart data={data} theme={theme} />
+          {!data.intraday && (
+            <>
+              <EquityChart data={data} theme={theme} />
 
-          <div className="card">
-            <h2>Per-pattern performance</h2>
-            <ByPatternTable rows={data.by_pattern} theme={theme} />
-          </div>
+              <div className="card">
+                <h2>Per-pattern performance</h2>
+                <ByPatternTable rows={data.by_pattern} theme={theme} />
+              </div>
 
-          <MetricsCards metrics={data.metrics} theme={theme} />
+              <MetricsCards metrics={data.metrics} theme={theme} />
 
-          <div className="card">
-            <h2>Trades ({data.trades.length})</h2>
-            <TradesTable trades={data.trades} theme={theme} />
-          </div>
+              <div className="card">
+                <h2>Trades ({data.trades.length})</h2>
+                <TradesTable trades={data.trades} theme={theme} />
+              </div>
 
-          <div className="card">
-            <h2>Compiled signals ({data.signals.length})</h2>
-            <p className="chart-note">
-              A compiled signal is a detection that survived every filter (qualification, market/sector
-              regime, relative strength, earnings blackout, liquidity) and was converted into a concrete
-              order: when to enter, and a stop and target in ₹ built from the stock's own volatility
-              (×ATR). These are exactly what the backtest above traded. Hover a pattern name for what
-              the setup means.
-            </p>
-            <SignalsTable signals={data.signals} />
-          </div>
+              <div className="card">
+                <h2>Compiled signals ({data.signals.length})</h2>
+                <p className="chart-note">
+                  A compiled signal is a detection that survived every filter (qualification, market/sector
+                  regime, relative strength, earnings blackout, liquidity) and was converted into a concrete
+                  order: when to enter, and a stop and target in ₹ built from the stock's own volatility
+                  (×ATR). These are exactly what the backtest above traded. Hover a pattern name for what
+                  the setup means.
+                </p>
+                <SignalsTable signals={data.signals} />
+              </div>
 
-          <div className="card">
-            <h2>Corporate events in window ({data.events?.length ?? 0})</h2>
-            <p className="chart-note">
-              Why these matter for timing: <b>results</b> gap prices unpredictably — the engine refuses
-              fresh entries 3 days before and 1 day after each announcement; <b>ex-dividend dates</b>{' '}
-              mechanically drop the price by roughly the payout (prices here are dividend-adjusted, so
-              signals are unaffected — but a short held through ex-date owes the dividend);{' '}
-              <b>splits/bonuses</b> are cosmetic but often bring a burst of volume and retail attention.
-            </p>
-            <EventsTable events={data.events ?? []} />
-          </div>
+              <div className="card">
+                <h2>Corporate events in window ({data.events?.length ?? 0})</h2>
+                <p className="chart-note">
+                  Why these matter for timing: <b>results</b> gap prices unpredictably — the engine refuses
+                  fresh entries 3 days before and 1 day after each announcement; <b>ex-dividend dates</b>{' '}
+                  mechanically drop the price by roughly the payout (prices here are dividend-adjusted, so
+                  signals are unaffected — but a short held through ex-date owes the dividend);{' '}
+                  <b>splits/bonuses</b> are cosmetic but often bring a burst of volume and retail attention.
+                </p>
+                <EventsTable events={data.events ?? []} />
+              </div>
+            </>
+          )}
 
           <div className="card">
             <h2>Recent qualified detections</h2>
@@ -395,14 +421,16 @@ export default function App() {
             )}
           </div>
 
-          <div className="card">
-            <h2>Latest session summary</h2>
-            <p className="chart-note">
-              Narrative digest of the most recent session: what fired, in which regime, with the key
-              stats spelled out — meant to be read as prose after the market closes.
-            </p>
-            <pre className="summary">{data.summary_md.replace(/[#*_]/g, '')}</pre>
-          </div>
+          {!data.intraday && (
+            <div className="card">
+              <h2>Latest session summary</h2>
+              <p className="chart-note">
+                Narrative digest of the most recent session: what fired, in which regime, with the key
+                stats spelled out — meant to be read as prose after the market closes.
+              </p>
+              <pre className="summary">{data.summary_md.replace(/[#*_]/g, '')}</pre>
+            </div>
+          )}
         </main>
       )}
 

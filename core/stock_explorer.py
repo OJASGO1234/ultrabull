@@ -89,9 +89,17 @@ def to_series(x):
         return x.iloc[:, 0]
     return x  # already a Series
 
-def load_data(symbol: str, years: float = 1, start=None, end=None) -> pd.DataFrame:
-    """Download OHLCV data for a symbol from Yahoo Finance.
-    Either pass `years` (window ending today) or explicit `start`/`end` dates."""
+# yfinance intraday history caps (days) and a sensible default lookback per interval
+_INTRADAY_MAX_DAYS = {"5m": 60, "15m": 60, "30m": 60, "60m": 730, "90m": 60}
+_INTRADAY_DEFAULT_DAYS = {"5m": 10, "15m": 30, "30m": 45, "60m": 120, "90m": 45}
+
+
+def load_data(symbol: str, years: float = 1, start=None, end=None, interval: str = "1d") -> pd.DataFrame:
+    """Download OHLCV for a symbol from Yahoo Finance at the given interval.
+
+    interval='1d' is the daily default the whole pipeline was validated on.
+    Intraday intervals ('5m','15m','60m',...) are supported for charting +
+    indicators + pattern sightings, with yfinance's history limits applied."""
     # yfinance treats `end` as exclusive and interprets naive datetimes in the
     # exchange's timezone — on a UTC server, end=now reads as pre-open IST and
     # silently drops today's live bar. Pushing end a day forward keeps today's
@@ -101,11 +109,19 @@ def load_data(symbol: str, years: float = 1, start=None, end=None) -> pd.DataFra
         end = datetime.now() + timedelta(days=1)
     else:
         end = pd.Timestamp(end) + timedelta(days=1)
-    if start is None:
+
+    if interval != "1d":
+        # intraday: bound the window to what yfinance will serve for this interval
+        want = _INTRADAY_DEFAULT_DAYS.get(interval, 30)
+        cap = _INTRADAY_MAX_DAYS.get(interval, 60)
+        days = min(want if start is None else max(1, (pd.Timestamp(end) - pd.Timestamp(start)).days), cap)
+        start = pd.Timestamp(end) - timedelta(days=days)
+    elif start is None:
         start = end - timedelta(days=365 * years + 10)
-    df = yf.download(symbol, start=start, end=end, auto_adjust=True, progress=False)
+
+    df = yf.download(symbol, start=start, end=end, interval=interval, auto_adjust=True, progress=False)
     if df.empty:
-        raise ValueError(f"No data for {symbol}")
+        raise ValueError(f"No data for {symbol}" + (f" at {interval}" if interval != "1d" else ""))
     df = df.rename(columns=str.lower)  # open, high, low, close, volume
     if getattr(df.index, "tz", None) is not None:
         df.index = df.index.tz_localize(None)

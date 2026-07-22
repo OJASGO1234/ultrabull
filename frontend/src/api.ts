@@ -29,8 +29,9 @@ export function rangeToQuery(range: RangeQuery): URLSearchParams {
   return q
 }
 
-export async function fetchAnalysis(symbol: string, range: RangeQuery): Promise<AnalysisResponse> {
+export async function fetchAnalysis(symbol: string, range: RangeQuery, interval = '1d'): Promise<AnalysisResponse> {
   const q = rangeToQuery(range)
+  if (interval && interval !== '1d') q.set('interval', interval)
   const res = await authFetch(`/api/analyze/${encodeURIComponent(symbol)}?${q}`)
   if (!res.ok) {
     let detail = `Request failed (${res.status})`
