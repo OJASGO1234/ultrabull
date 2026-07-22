@@ -60,9 +60,6 @@ export function MarketDepth({ symbol, theme: t }: { symbol: string; theme: Theme
 
   const levels = [...book.bids, ...book.asks].map((l) => l.qty ?? 0)
   const maxQty = Math.max(1, ...levels)
-  const totalBuy = book.total_buy_qty ?? 0
-  const totalSell = book.total_sell_qty ?? 0
-  const buyShare = totalBuy + totalSell > 0 ? (totalBuy / (totalBuy + totalSell)) * 100 : 50
 
   const Row = ({ price, qty, orders, side }: { price: number | null; qty: number | null; orders: number | null; side: 'bid' | 'ask' }) => {
     const w = qty != null ? Math.max(2, (qty / maxQty) * 100) : 0
@@ -100,20 +97,6 @@ export function MarketDepth({ symbol, theme: t }: { symbol: string; theme: Theme
           <div className="depth-head"><span>Ask ₹</span><span>Qty</span><span>Orders</span></div>
           {book.asks.map((l, i) => <Row key={i} {...l} side="ask" />)}
         </div>
-      </div>
-      <div className="depth-pressure">
-        <div className="depth-pressure-bar">
-          <div style={{ width: `${buyShare}%`, background: `color-mix(in srgb, ${t.good} 45%, transparent)` }} />
-          <div style={{ width: `${100 - buyShare}%`, background: `color-mix(in srgb, ${t.critical} 45%, transparent)` }} />
-        </div>
-        <div className="depth-pressure-labels">
-          <span style={{ color: t.deltaUpText }}>Total buy {fmt.compact(totalBuy)} ({buyShare.toFixed(0)}%)</span>
-          <span style={{ color: t.deltaDownText }}>Total sell {fmt.compact(totalSell)} ({(100 - buyShare).toFixed(0)}%)</span>
-        </div>
-        <p className="chart-note">
-          Total quantity queued across all price levels — a rough read on near-term buying vs. selling pressure (it
-          shifts fast and is easily gamed, so treat it as color, not signal).
-        </p>
       </div>
     </div>
   )

@@ -96,11 +96,19 @@ def ltp_map(symbols: list[str]) -> dict[str, float]:
     return out
 
 
+_depth_cache: dict[str, tuple[float, dict]] = {}
+
+
 @router.get("/depth")
 def depth(symbol: str = Query(..., description="Yahoo symbol, e.g. ITC.NS")):
     """Level-2 order book (5 bids / 5 asks) + total buy/sell quantity from
-    Groww. Empty/thin outside market hours."""
-    pair = _split(symbol.strip().upper())
+    Groww. Empty/thin outside market hours. ~2.5s micro-cache so the order book
+    and the order-flow gauge can both poll without doubling Groww calls."""
+    sym = symbol.strip().upper()
+    hit = _depth_cache.get(sym)
+    if hit and time.time() - hit[0] < 2.5:
+        return hit[1]
+    pair = _split(sym)
     if not pair:
         raise HTTPException(status_code=422, detail="need an NSE/BSE symbol (.NS/.BO)")
     exch, base = pair
@@ -120,8 +128,8 @@ def depth(symbol: str = Query(..., description="Yahoo symbol, e.g. ITC.NS")):
     best_bid = bids[0]["price"] if bids else None
     best_ask = asks[0]["price"] if asks else None
     spread = round(best_ask - best_bid, 2) if (best_bid is not None and best_ask is not None) else None
-    return {
-        "symbol": symbol.strip().upper(),
+    out = {
+        "symbol": sym,
         "ltp": q.get("last_price"),
         "bids": bids, "asks": asks,
         "best_bid": best_bid, "best_ask": best_ask, "spread": spread,
@@ -130,6 +138,10 @@ def depth(symbol: str = Query(..., description="Yahoo symbol, e.g. ITC.NS")):
         "total_sell_qty": q.get("total_sell_quantity"),
         "market_open": market_open(),
     }
+    _depth_cache[sym] = (time.time(), out)
+    if len(_depth_cache) > 32:
+        _depth_cache.pop(min(_depth_cache, key=lambda k: _depth_cache[k][0]))
+    return out
 
 
 @router.get("")

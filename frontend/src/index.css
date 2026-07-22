@@ -1195,3 +1195,46 @@ tbody tr:last-child td {
   padding: 0 4px;
 }
 .chat-attach-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Live order-flow gauge */
+.of-headline {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 4px 0 10px;
+}
+.of-gauge {
+  position: relative;
+  display: flex;
+  height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.of-fill {
+  display: flex;
+  align-items: center;
+  transition: width 0.5s ease;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+.of-fill span { padding: 0 8px; }
+.of-buy { background: color-mix(in srgb, var(--good) 78%, transparent); justify-content: flex-start; }
+.of-sell { background: color-mix(in srgb, var(--critical) 78%, transparent); justify-content: flex-end; }
+.of-mid {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--page);
+  opacity: 0.7;
+}
+.of-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 5px;
+}

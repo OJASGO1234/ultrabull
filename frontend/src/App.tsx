@@ -5,6 +5,7 @@ import type { AnalysisResponse } from './types'
 import { useTheme } from './theme'
 import { PriceChart } from './components/PriceChart'
 import { MarketDepth } from './components/MarketDepth'
+import { OrderFlowGauge } from './components/OrderFlowGauge'
 import { DealsCard } from './components/DealsCard'
 import { RsiChart } from './components/RsiChart'
 import { MacdChart } from './components/MacdChart'
@@ -302,6 +303,8 @@ export default function App() {
           />
 
           {data.outlook && <OutlookCard outlook={data.outlook} theme={theme} />}
+
+          <OrderFlowGauge symbol={data.symbol} theme={theme} />
 
           {data.context && data.timing && (
             <ContextCard context={data.context} timing={data.timing} theme={theme} />
