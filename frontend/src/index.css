@@ -1163,3 +1163,35 @@ tbody tr:last-child td {
   font-variant-numeric: tabular-nums;
   margin-top: 4px;
 }
+
+/* Chat image attach */
+.chat-img {
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.chat-attach {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+}
+.chat-attach img { height: 40px; border-radius: 6px; }
+.chat-attach button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+}
+.chat-attach-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.chat-attach-btn:disabled { opacity: 0.4; cursor: default; }

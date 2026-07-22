@@ -8,6 +8,7 @@ import { authFetch } from '../auth'
 interface ChatMsg {
   role: 'user' | 'assistant'
   content: string
+  image?: string | null // base64 data URL, user turns only
 }
 
 interface Props {
@@ -22,9 +23,30 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
+  const [image, setImage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const readImage = (file: File | null | undefined) => {
+    if (!file || !file.type.startsWith('image/')) return
+    if (file.size > 5_000_000) {
+      setError('Image too large (max ~5MB).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setImage(typeof reader.result === 'string' ? reader.result : null)
+    reader.readAsDataURL(file)
+  }
+
+  const onPaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((it) => it.type.startsWith('image/'))
+    if (item) {
+      e.preventDefault()
+      readImage(item.getAsFile())
+    }
+  }
 
   // New symbol/range = new conversation context
   useEffect(() => {
@@ -39,10 +61,12 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
   const send = async (e: FormEvent) => {
     e.preventDefault()
     const text = input.trim()
-    if (!text || busy || !hasData) return
-    const next: ChatMsg[] = [...messages, { role: 'user', content: text }]
+    if ((!text && !image) || busy || !hasData) return
+    const next: ChatMsg[] = [...messages, { role: 'user', content: text, image }]
     setMessages(next)
     setInput('')
+    const sentImage = image
+    setImage(null)
     setBusy(true)
     setError(null)
     try {
@@ -71,6 +95,7 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
       setError(err instanceof Error ? err.message : String(err))
       setMessages(messages) // roll back the optimistic user message
       setInput(text)
+      setImage(sentImage)
     } finally {
       setBusy(false)
     }
@@ -126,6 +151,7 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
                 </div>
               ) : (
                 <div key={i} className="chat-msg chat-user">
+                  {m.image && <img src={m.image} alt="pasted" className="chat-img" />}
                   {m.content}
                 </div>
               ),
@@ -134,21 +160,45 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
             {error && <div className="chat-error">⚠ {error}</div>}
           </div>
 
+          {image && (
+            <div className="chat-attach">
+              <img src={image} alt="attachment" />
+              <button type="button" onClick={() => setImage(null)} aria-label="Remove image">✕</button>
+              <span className="chat-sub">image attached</span>
+            </div>
+          )}
           <form className="chat-input" onSubmit={send}>
+            <button
+              type="button"
+              className="chat-attach-btn"
+              title="Attach an image (or just paste one)"
+              disabled={!hasData || busy}
+              onClick={() => fileRef.current?.click()}
+            >
+              📎
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => { readImage(e.target.files?.[0]); e.target.value = '' }}
+            />
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={onPaste}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
                   e.currentTarget.form?.requestSubmit()
                 }
               }}
-              placeholder={hasData ? 'Ask about this analysis…' : 'Run an analysis first'}
+              placeholder={hasData ? 'Ask, or paste a chart image…' : 'Run an analysis first'}
               rows={2}
               disabled={!hasData || busy}
             />
-            <button type="submit" disabled={!hasData || busy || !input.trim()}>
+            <button type="submit" disabled={!hasData || busy || (!input.trim() && !image)}>
               Send
             </button>
           </form>

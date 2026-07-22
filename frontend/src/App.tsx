@@ -5,6 +5,7 @@ import type { AnalysisResponse } from './types'
 import { useTheme } from './theme'
 import { PriceChart } from './components/PriceChart'
 import { MarketDepth } from './components/MarketDepth'
+import { DealsCard } from './components/DealsCard'
 import { RsiChart } from './components/RsiChart'
 import { MacdChart } from './components/MacdChart'
 import { EquityChart } from './components/EquityChart'
@@ -316,6 +317,8 @@ export default function App() {
           />
 
           <MarketDepth symbol={data.symbol} theme={theme} />
+
+          <DealsCard symbol={data.symbol} theme={theme} />
 
           <div className="card">
             <h2>Support / resistance levels</h2>

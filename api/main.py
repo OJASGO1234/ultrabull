@@ -64,6 +64,7 @@ from .sre import router as sre_router
 from .auth import make_token, verify_token, verify_user
 from .live import router as live_router, groww_router
 from .paper import router as paper_router
+from .deals import router as deals_router
 
 app = FastAPI(title="Ultrabull API")
 
@@ -78,6 +79,7 @@ app.include_router(sre_router)
 app.include_router(live_router)
 app.include_router(groww_router)
 app.include_router(paper_router)
+app.include_router(deals_router)
 
 
 @app.on_event("startup")
@@ -878,6 +880,8 @@ BACKTEST_TOOL = {
 class ChatMessage(BaseModel):
     role: str
     content: str
+    # optional pasted image on a user turn: base64 data URL ("data:image/png;base64,...")
+    image: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -910,7 +914,22 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=404, detail=str(e))
 
     client = anthropic.Anthropic()
-    msgs = [{"role": m.role, "content": m.content} for m in req.messages[-20:]]
+    def _msg(m: ChatMessage) -> dict:
+        # attach a pasted image as a vision block on a user turn
+        if m.role == "user" and m.image and m.image.startswith("data:image/"):
+            try:
+                header, b64 = m.image.split(",", 1)
+                media_type = header.split(";")[0].split(":")[1]
+                if media_type in ("image/png", "image/jpeg", "image/gif", "image/webp") and len(b64) < 7_000_000:
+                    return {"role": "user", "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                        {"type": "text", "text": m.content or "What do you make of this?"},
+                    ]}
+            except Exception:
+                pass
+        return {"role": m.role, "content": m.content}
+
+    msgs = [_msg(m) for m in req.messages[-20:]]
     system_blocks = [
         {"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}},
         {"type": "text",
