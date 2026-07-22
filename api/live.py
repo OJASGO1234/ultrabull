@@ -96,6 +96,42 @@ def ltp_map(symbols: list[str]) -> dict[str, float]:
     return out
 
 
+@router.get("/depth")
+def depth(symbol: str = Query(..., description="Yahoo symbol, e.g. ITC.NS")):
+    """Level-2 order book (5 bids / 5 asks) + total buy/sell quantity from
+    Groww. Empty/thin outside market hours."""
+    pair = _split(symbol.strip().upper())
+    if not pair:
+        raise HTTPException(status_code=422, detail="need an NSE/BSE symbol (.NS/.BO)")
+    exch, base = pair
+    try:
+        try:
+            q = _get_client().get_quote(trading_symbol=base, exchange=exch, segment="CASH")
+        except Exception:
+            q = _get_client(force_new=True).get_quote(trading_symbol=base, exchange=exch, segment="CASH")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Groww depth unavailable: {e}")
+
+    d = q.get("depth") or {}
+    bids = [{"price": b.get("price"), "qty": b.get("quantity"), "orders": b.get("orderCount")}
+            for b in (d.get("buy") or [])]
+    asks = [{"price": a.get("price"), "qty": a.get("quantity"), "orders": a.get("orderCount")}
+            for a in (d.get("sell") or [])]
+    best_bid = bids[0]["price"] if bids else None
+    best_ask = asks[0]["price"] if asks else None
+    spread = round(best_ask - best_bid, 2) if (best_bid is not None and best_ask is not None) else None
+    return {
+        "symbol": symbol.strip().upper(),
+        "ltp": q.get("last_price"),
+        "bids": bids, "asks": asks,
+        "best_bid": best_bid, "best_ask": best_ask, "spread": spread,
+        "spread_pct": round(100 * spread / best_bid, 3) if (spread is not None and best_bid) else None,
+        "total_buy_qty": q.get("total_buy_quantity"),
+        "total_sell_qty": q.get("total_sell_quantity"),
+        "market_open": market_open(),
+    }
+
+
 @router.get("")
 def live(symbols: str = Query(..., description="Comma-separated Yahoo symbols")):
     syms = [s.strip().upper() for s in symbols.split(",") if s.strip()][:40]

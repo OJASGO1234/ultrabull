@@ -41,6 +41,32 @@ function mergeTick(prev: LiveQuote | undefined, ltp: number, ts: number): LiveQu
   }
 }
 
+export interface DepthLevel {
+  price: number | null
+  qty: number | null
+  orders: number | null
+}
+
+export interface DepthBook {
+  symbol: string
+  ltp: number | null
+  bids: DepthLevel[]
+  asks: DepthLevel[]
+  best_bid: number | null
+  best_ask: number | null
+  spread: number | null
+  spread_pct: number | null
+  total_buy_qty: number | null
+  total_sell_qty: number | null
+  market_open: boolean
+}
+
+export async function fetchDepth(symbol: string): Promise<DepthBook> {
+  const res = await authFetch(`/api/live/depth?symbol=${encodeURIComponent(symbol)}`)
+  if (!res.ok) throw new Error(`depth fetch failed (${res.status})`)
+  return res.json()
+}
+
 export function useLiveQuotes(symbols: string[]): LiveState {
   const [state, setState] = useState<LiveState>({ quotes: {}, marketOpen: null, live: false, mode: null })
   const key = [...new Set(symbols)].sort().join(',')

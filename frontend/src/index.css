@@ -1106,3 +1106,60 @@ tbody tr:last-child td {
   padding: 6px 10px;
   font: inherit;
 }
+
+/* Market depth (order book) */
+.depth-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) { .depth-cols { grid-template-columns: 1fr; } }
+
+.depth-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.6fr;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0 4px 4px;
+}
+
+.depth-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.6fr;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 4px;
+}
+
+.depth-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  z-index: 0;
+}
+
+.depth-price, .depth-qty, .depth-orders { position: relative; z-index: 1; }
+.depth-qty { text-align: right; }
+.depth-orders { text-align: right; color: var(--muted); font-size: 11px; }
+
+.depth-pressure { margin-top: 12px; }
+
+.depth-pressure-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.depth-pressure-bar > div { height: 100%; }
+
+.depth-pressure-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}

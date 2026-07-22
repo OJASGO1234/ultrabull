@@ -4,6 +4,7 @@ import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from './api'
 import type { AnalysisResponse } from './types'
 import { useTheme } from './theme'
 import { PriceChart } from './components/PriceChart'
+import { MarketDepth } from './components/MarketDepth'
 import { RsiChart } from './components/RsiChart'
 import { MacdChart } from './components/MacdChart'
 import { EquityChart } from './components/EquityChart'
@@ -313,6 +314,8 @@ export default function App() {
             theme={theme}
             live={liveQuote}
           />
+
+          <MarketDepth symbol={data.symbol} theme={theme} />
 
           <div className="card">
             <h2>Support / resistance levels</h2>
