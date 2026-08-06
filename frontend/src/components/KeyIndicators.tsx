@@ -29,13 +29,14 @@ export function KeyIndicators({ ki, theme: t, compact }: { ki: KI; theme: Theme;
       </div>
       <ul className="ki-list">
         {ki.flags.map((f, i) => (
-          <li key={i}>
-            <span className="ki-mark" style={{ color: stateColor(t, f.state) }}>
-              {STATE_MARK[f.state]}
+          <li key={i} className={f.ignored ? 'factor-ignored' : undefined}>
+            <span className="ki-mark" style={{ color: f.ignored ? t.muted : stateColor(t, f.state) }}>
+              {f.ignored ? '—' : STATE_MARK[f.state]}
             </span>
             <span className="ki-text">
               <b>{f.label}</b>
               {f.value && <span className="ki-value"> {f.value}</span>} — {f.detail}
+              {f.ignored && <span className="factor-tag"> (not counted in this view)</span>}
             </span>
           </li>
         ))}

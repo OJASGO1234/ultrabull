@@ -60,8 +60,49 @@ export function AdviceCard({ advice: a, outlook, theme: t }: Props) {
     <div className="card">
       <div className="card-head">
         <h2>Buy / sell signal — level-aware synthesis</h2>
-        <span className="hover-readout">as of {a.as_of} · close ₹{fmt.price(a.close)} · net score {a.score > 0 ? '+' : ''}{a.score}</span>
+        <span className="hover-readout">
+          as of {a.as_of} · close ₹{fmt.price(a.close)} · net score {a.score > 0 ? '+' : ''}{a.score}
+          {a.setup_score != null && a.env_score != null && (
+            <> · setup {a.setup_score > 0 ? '+' : ''}{a.setup_score}
+              {' · '}tape {a.env_score > 0 ? '+' : ''}{a.env_score}
+              {a.market_context_applied === false && ' (excluded)'}</>
+          )}
+        </span>
       </div>
+
+      {/* The two axes answer different questions: is this a good setup, and is
+          this a good time to act on any setup. Blending them hides the case
+          where a fine stock is being held back purely by the tape. */}
+      {a.setup_score != null && a.env_score != null && (
+        <div className="axis-split">
+          <span className="axis" style={{ color: markColor(a.setup_score) }}>
+            <b>This stock</b> {a.setup_score > 0 ? '+' : ''}{a.setup_score}
+          </span>
+          <span className="axis-sep">·</span>
+          <span
+            className="axis"
+            style={{
+              color: a.market_context_applied === false ? t.muted : markColor(a.env_score),
+              textDecoration: a.market_context_applied === false ? 'line-through' : undefined,
+            }}
+          >
+            <b>This market</b> {a.env_score > 0 ? '+' : ''}{a.env_score}
+          </span>
+        </div>
+      )}
+
+      {a.blockers != null && a.blockers.length > 0 && (
+        <div className="blocker-note">
+          <b>The setup is fine — the tape is what's holding it back.</b>
+          <ul>
+            {a.blockers.map((b) => (
+              <li key={b.name}>
+                <b>{b.name}</b> — {b.detail}. Clears when {b.clears_when}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="tiles">
         <div className="tile">
@@ -97,9 +138,15 @@ export function AdviceCard({ advice: a, outlook, theme: t }: Props) {
 
       <ul className="factor-list">
         {a.factors.map((f) => (
-          <li key={f.name}>
-            <span className="factor-mark" style={{ color: markColor(f.score) }}>{mark(f.score)}</span>
+          <li key={f.name} className={f.ignored ? 'factor-ignored' : undefined}>
+            <span
+              className="factor-mark"
+              style={{ color: f.ignored ? t.muted : markColor(f.score) }}
+            >
+              {f.ignored ? '—' : mark(f.score)}
+            </span>
             <b>{f.name}</b> — {f.detail}
+            {f.ignored && <span className="factor-tag"> (ignored in this view)</span>}
           </li>
         ))}
       </ul>

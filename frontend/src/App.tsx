@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from './api'
-import type { AnalysisResponse } from './types'
+import type { AnalysisResponse, ViewName } from './types'
 import { useTheme } from './theme'
+import { fmt } from './components/chart'
 import { PriceChart } from './components/PriceChart'
 import { MarketDepth } from './components/MarketDepth'
 import { OrderFlowGauge } from './components/OrderFlowGauge'
@@ -20,6 +21,7 @@ import { PaperTradeCard } from './components/PaperTradeCard'
 import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
 import { KeyIndicators } from './components/KeyIndicators'
+import { MarketContextToggle } from './components/MarketContextToggle'
 import { HoldingsPage } from './components/HoldingsPage'
 import { HealthPage } from './components/HealthPage'
 import { PaperPage } from './components/PaperPage'
@@ -66,15 +68,43 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<AnalysisResponse | null>(null)
+  // Which analysis view is on screen — shared by the Analyze and Holdings
+  // tabs so switching "market context" applies everywhere at once.
+  // Deliberately NOT persisted to localStorage: the stock-only view ignores
+  // validated filters, so it should be a conscious choice each session
+  // rather than a setting that quietly sticks.
+  const [view, setView] = useState<ViewName>('market_aware')
   const [active, setActive] = useState<{ symbol: string; range: RangeQuery } | null>(null)
   const liveState = useLiveQuotes(active && page === 'analyze' ? [active.symbol] : [])
   const liveQuote = active ? liveState.quotes[active.symbol] ?? null : null
+
+  // Both views ship in one payload, so switching is instant and needs no
+  // refetch. Fall back to the top-level fields for intraday runs (no views).
+  const activeView = data?.views?.[view] ?? null
+  const advice = activeView?.advice ?? data?.advice ?? null
+  const outlook = activeView?.outlook ?? data?.outlook ?? null
+  const stockOnly = view === 'stock_only' && activeView != null
+  const keyIndicators = activeView?.key_indicators ?? data?.key_indicators ?? null
+  // The backtest belongs to the view too — a stock-only verdict sitting above a
+  // market-aware equity curve would be telling two stories at once. Charts take
+  // the whole payload, so overlay the view's series onto it.
+  const viewData = data && activeView
+    ? {
+        ...data,
+        metrics: activeView.metrics ?? data.metrics,
+        by_pattern: activeView.by_pattern ?? data.by_pattern,
+        signals: activeView.signals ?? data.signals,
+        trades: activeView.trades ?? data.trades,
+        equity: activeView.equity ?? data.equity,
+      }
+    : data
 
   const run = useCallback(async (s: string, range: RangeQuery, iv = '1d') => {
     setLoading(true)
     setError(null)
     try {
       setData(await fetchAnalysis(s, range, iv))
+      setView('market_aware')   // every new run starts from the supported view
       setActive({ symbol: s, range })
       const url = new URL(window.location.href)
       url.searchParams.set('symbol', s)
@@ -221,7 +251,9 @@ export default function App() {
         </nav>
       </header>
 
-      {page === 'holdings' && <HoldingsPage theme={theme} onOpenAnalysis={openAnalysis} />}
+      {page === 'holdings' && (
+        <HoldingsPage theme={theme} onOpenAnalysis={openAnalysis} view={view} onViewChange={setView} />
+      )}
 
       {page === 'health' && <HealthPage theme={theme} />}
 
@@ -310,19 +342,50 @@ export default function App() {
             </div>
           )}
 
-          {data.advice && <AdviceCard advice={data.advice} outlook={data.outlook} theme={theme} />}
+          {data.views && <MarketContextToggle view={view} onChange={setView} />}
 
-          {data.key_indicators && <KeyIndicators ki={data.key_indicators} theme={theme} />}
+          {stockOnly && activeView && (
+            <div className="card stock-only-banner">
+              <b>Stock-only view — market context is switched off.</b>{' '}
+              {activeView.warning}
+              {activeView.lifted_score_factors && (
+                <>
+                  <br />
+                  <b>Dropped from the advice score:</b>{' '}
+                  {activeView.lifted_score_factors.join(', ')}.{' '}
+                  <b>Lifted as backtest gates:</b> {activeView.lifted_gates?.join(', ')}.{' '}
+                  <b>Still applied:</b> {activeView.kept_filters?.join(', ')}.
+                  {activeView.already_off?.map((s) => (
+                    <span key={s}> ({s}.)</span>
+                  ))}
+                </>
+              )}
+              {activeView.metrics && data.views?.market_aware.metrics && (
+                <>
+                  <br />
+                  <b>On this symbol's own backtest:</b> profit factor{' '}
+                  {fmt.ratio(data.views.market_aware.metrics.profit_factor)} (market-aware) →{' '}
+                  {fmt.ratio(activeView.metrics.profit_factor)} (stock-only) over{' '}
+                  {data.views.market_aware.trades.length} → {activeView.trades.length} trades.
+                  The backtest, equity curve and signal list below follow this view.
+                </>
+              )}
+            </div>
+          )}
+
+          {advice && <AdviceCard advice={advice} outlook={outlook} theme={theme} />}
+
+          {keyIndicators && <KeyIndicators ki={keyIndicators} theme={theme} />}
 
           <PaperTradeCard
             symbol={data.symbol}
             live={liveQuote}
-            advice={data.advice}
+            advice={advice}
             lastClose={data.ohlcv.length ? data.ohlcv[data.ohlcv.length - 1].close : null}
             theme={theme}
           />
 
-          {data.outlook && <OutlookCard outlook={data.outlook} theme={theme} />}
+          {outlook && <OutlookCard outlook={outlook} theme={theme} />}
 
           <OrderFlowGauge symbol={data.symbol} theme={theme} />
 
@@ -355,30 +418,31 @@ export default function App() {
 
           {!data.intraday && (
             <>
-              <EquityChart data={data} theme={theme} />
+              <EquityChart data={viewData ?? data} theme={theme} />
 
               <div className="card">
                 <h2>Per-pattern performance</h2>
-                <ByPatternTable rows={data.by_pattern} theme={theme} />
+                <ByPatternTable rows={(viewData ?? data).by_pattern} theme={theme} />
               </div>
 
-              <MetricsCards metrics={data.metrics} theme={theme} />
+              <MetricsCards metrics={(viewData ?? data).metrics} theme={theme} />
 
               <div className="card">
-                <h2>Trades ({data.trades.length})</h2>
-                <TradesTable trades={data.trades} theme={theme} />
+                <h2>Trades ({(viewData ?? data).trades.length})</h2>
+                <TradesTable trades={(viewData ?? data).trades} theme={theme} />
               </div>
 
               <div className="card">
-                <h2>Compiled signals ({data.signals.length})</h2>
+                <h2>Compiled signals ({(viewData ?? data).signals.length})</h2>
                 <p className="chart-note">
-                  A compiled signal is a detection that survived every filter (qualification, market/sector
-                  regime, relative strength, earnings blackout, liquidity) and was converted into a concrete
-                  order: when to enter, and a stop and target in ₹ built from the stock's own volatility
-                  (×ATR). These are exactly what the backtest above traded. Hover a pattern name for what
-                  the setup means.
+                  A compiled signal is a detection that survived every filter (qualification,{' '}
+                  {stockOnly ? '' : 'market/sector regime, '}relative strength, earnings blackout,
+                  liquidity) and was converted into a concrete order: when to enter, and a stop and
+                  target in ₹ built from the stock's own volatility (×ATR). These are exactly what the
+                  backtest above traded. Hover a pattern name for what the setup means.
+                  {stockOnly && ' Market-timing filters are lifted in this view, so more detections survive.'}
                 </p>
-                <SignalsTable signals={data.signals} />
+                <SignalsTable signals={(viewData ?? data).signals} />
               </div>
 
               <div className="card">
@@ -440,6 +504,7 @@ export default function App() {
         symbol={active?.symbol ?? ''}
         range={active?.range ?? {}}
         hasData={active != null && data != null}
+        view={view}
       />
       </>)}
     </div>

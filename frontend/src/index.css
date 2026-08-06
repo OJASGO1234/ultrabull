@@ -13,6 +13,7 @@
   --good: #0ca30c;
   --good-text: #006300;
   --critical: #d03b3b;
+  --warning: #fab219;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,6 +31,7 @@
     --good: #0ca30c;
     --good-text: #0ca30c;
     --critical: #e66767;
+    --warning: #fab219;
   }
 }
 
@@ -1244,4 +1246,94 @@ tbody tr:last-child td {
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.55;
+}
+
+/* Market-context switch: which analysis view is on screen. Styled as a plain
+   control, not a hero element — the default is the one we want people using. */
+.view-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.view-switch-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.view-tabs {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.view-tab {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.view-tab-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.view-switch-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Loud on purpose: this view ignores validated filters. */
+.stock-only-banner {
+  border-left: 3px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface-1));
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* The two axes of the advice score, side by side. */
+.axis-split {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 10px;
+}
+
+.axis-sep {
+  color: var(--muted);
+}
+
+.blocker-note {
+  border-left: 3px solid var(--warning);
+  padding-left: 10px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.blocker-note ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.factor-ignored {
+  opacity: 0.55;
+}
+
+.factor-tag {
+  color: var(--muted);
+  font-style: italic;
 }

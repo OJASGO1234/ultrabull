@@ -14,14 +14,41 @@ Outputs two verdicts — fresh money vs existing holding — plus a concrete pla
 whose stop sits BELOW the nearest support (a level break proves the thesis
 wrong) and whose target is the next resistance. Every factor is returned with
 its contribution so the UI can show WHY.
+
+Factors carry an `axis`:
+  "setup"       — evidence about THIS stock (trend, RSI, MACD, volume, levels,
+                  reward:risk, patterns, relative strength vs its sector)
+  "environment" — evidence about the TAPE (NIFTY regime, sector regime,
+                  breadth, distribution days)
+
+and the two are scored separately, because blending them into one number lets
+a hostile tape bury a good setup with no way to see that that is what happened.
+`use_market_context=False` produces the stock-only view: environment factors are
+still computed and returned (so the UI can show what is being ignored) but are
+excluded from the score and cannot veto a verdict. That view is deliberately
+NOT the default — see the distribution-day evidence in dist_day_study.py.
 """
 from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+# Factors describing the tape rather than the stock. Relative strength is
+# deliberately NOT here: it measures this stock against its sector, which is a
+# stock-selection statement, and it survived validation on its own.
+ENV_FACTORS = {"Market regime", "Sector regime", "Distribution days", "Market breadth"}
+# Vetoes carry a sentinel score and belong to neither axis — they are not
+# evidence about the stock, they are a reason not to act at all.
+VETO_FACTORS = {"Earnings blackout"}
+
 
 def _factor(name: str, score: float, detail: str) -> dict:
-    return {"name": name, "score": round(score, 2), "detail": detail}
+    return {
+        "name": name,
+        "score": round(score, 2),
+        "detail": detail,
+        "axis": ("veto" if name in VETO_FACTORS
+                 else "environment" if name in ENV_FACTORS else "setup"),
+    }
 
 
 def build_advice(
@@ -31,6 +58,7 @@ def build_advice(
     levels: list[dict] | None,
     timing: dict | None,
     detections: pd.DataFrame | None,
+    use_market_context: bool = True,
 ) -> dict:
     close = float(df_ohlcv["Close"].iloc[-1])
     atr = float(ind_df["ATR"].iloc[-1]) if np.isfinite(ind_df["ATR"].iloc[-1]) else close * 0.02
@@ -85,7 +113,8 @@ def build_advice(
             factors.append(_factor("Distribution days", -1.5,
                                    f"NIFTY fell on higher volume than the day before {int(dist_days)} times in the last "
                                    f"25 sessions — the footprint of large funds selling (they can't exit quietly). At 5+, "
-                                   f"our 4y test showed new buying does badly, so the system pauses fresh buys until it clears"))
+                                   f"our 4y test showed new buying does badly, so the system pauses fresh buys until it clears "
+                                   f"(Hammer reversals are exempt — they fire best in exactly this kind of tape)"))
         elif dist_days >= 4:
             factors.append(_factor("Distribution days", -0.5,
                                    f"{int(dist_days)} of the last 25 sessions saw the index fall on rising volume "
@@ -170,7 +199,30 @@ def build_advice(
         factors.append(_factor("Earnings blackout", -99,
                                "results imminent — gap risk dwarfs any setup edge; no fresh entries"))
 
-    score = float(sum(f["score"] for f in factors if f["score"] > -90))
+    # --- two axes: this stock vs this tape ---
+    # The earnings-blackout veto carries a sentinel score (-99); it is a veto,
+    # not a weight, so it is excluded from both sums.
+    weighted = [f for f in factors if f["score"] > -90]
+    setup_score = float(sum(f["score"] for f in weighted if f["axis"] == "setup"))
+    env_score = float(sum(f["score"] for f in weighted if f["axis"] == "environment"))
+    if not use_market_context:
+        for f in factors:
+            if f["axis"] == "environment":
+                f["ignored"] = True
+    # Thresholds below are the SAME in both modes, and that makes stock-only
+    # materially MORE PERMISSIVE — state it plainly rather than dressing it up.
+    # The environment axis spans -4.0 … +2.0, so dropping it removes twice as
+    # much drag as lift. Measured over every reachable (setup, env) pair: when
+    # dist_days >= 5 the fresh verdict differs in 55% of cases and is more
+    # bullish in 49%; market-aware cannot emit BUY or BUY_ON_DIP AT ALL in that
+    # regime, because dist_pause intercepts first. The toggle is therefore close
+    # to binary in the current tape, not a matter of degree.
+    #
+    # It is left permissive on purpose: the whole point of the view is to see
+    # the stock with the tape removed, and re-tightening the bar would just
+    # reintroduce the market through the back door. The honesty burden sits on
+    # the UI copy instead (api/main.py::stock_only_cfg -> views.stock_only.warning).
+    score = setup_score + env_score if use_market_context else setup_score
 
     # --- verdicts ---
     # Entry-price quality vetoes: a high score means the BACKDROP is right, but
@@ -179,7 +231,20 @@ def build_advice(
     # the very factors that flagged it (or the holding-side trim call).
     pressed = res is not None and (res["price"] - close) / atr <= 0.75
     overbought = rsi > 70
-    dist_pause = dist_days is not None and dist_days >= 5
+    # Re-checked Jul 2026 (dist_day_study.py) and left EXACTLY as shipped: over
+    # the last 12 months below-vs-above separation is directionally right at
+    # 5-10 bars (+74/+167 bps, one-sided block-bootstrap p 0.07/0.06 after
+    # correcting for overlapping, date-clustered events) but is absent in the
+    # prior 3 years (t~0.1) and REVERSES at 1 bar. That is too weak to move the
+    # constant in EITHER direction, so it stays a veto by inertia, not by fresh
+    # proof — and only in the market-aware view.
+    # It binds hard right now (85.8% of the last 120 sessions vs 50.9% across
+    # 4 years) for two reasons that must not be conflated: the threshold sits
+    # at the 4-year median (5.0), AND the count has genuinely shifted right
+    # lately (median 6.0, mean 5.83 over the last 120 sessions vs 4.77 over 4y).
+    # So it is partly an artifact of where the constant sits and partly a real
+    # regime change — neither alone explains it.
+    dist_pause = use_market_context and dist_days is not None and dist_days >= 5
 
     if blackout:
         fresh = {"verdict": "WAIT", "reason": "earnings blackout — re-assess after results"}
@@ -216,10 +281,39 @@ def build_advice(
         holding = {"verdict": "TIGHTEN_STOP",
                    "reason": f"deteriorating — raise stop to just below support ₹{sup['price']:.0f}" if sup
                    else "deteriorating — tighten stop to ~2 ATR below price"}
-    elif rsi > 70 and res is not None and (res["price"] - close) / atr <= 0.75:
+    elif overbought and pressed:
         holding = {"verdict": "CONSIDER_TRIM", "reason": "overbought into resistance — a partial profit-take is reasonable"}
     else:
         holding = {"verdict": "HOLD", "reason": "no exit trigger; let the position work with the stop in place"}
+
+    # --- what is holding this back, and what would clear it ---
+    # Only meaningful in the market-aware view, and ONLY when the tape is
+    # actually holding the verdict back: a blocker listed under a BUY tile
+    # (reachable whenever the market drags without changing the verdict) reads
+    # as a contradiction. Gate on the verdict, not on setup_score alone.
+    #
+    # Breadth is deliberately NOT a blocker: it is a -0.5 score factor and
+    # nothing more (breadth_min is 0.0 in every config, and the >=45% gate was
+    # tested and rejected — see CLAUDE.md). Giving it a `clears_when` would
+    # advertise a gate that does not exist.
+    blockers: list[dict] = []
+    held_back = fresh["verdict"] in ("WAIT", "AVOID", "BUY_ON_DIP")
+    if use_market_context and held_back and setup_score >= 1.5:
+        if dist_pause:
+            blockers.append({
+                "name": "Distribution days",
+                "detail": f"{int(dist_days)} index-falls-on-rising-volume in the last 25 sessions "
+                          f"(ceiling is 5) — fresh buys are paused market-wide, except Hammer reversals",
+                "clears_when": "the count falls below 5",
+            })
+        if mkt_up is False and env_score < 0:
+            blockers.append({
+                "name": "Market regime",
+                "detail": "NIFTY's 20-day average is below its 50-day — the pattern engine gates fresh "
+                          "long signals off here (Hammer excepted), and this card weights it heavily "
+                          "against fresh buys",
+                "clears_when": "NIFTY's 20-day average crosses back above its 50-day",
+            })
 
     # --- plan (levels first, ATR fallback) ---
     stop = round(sup["price"] - 0.5 * atr, 2) if sup else round(close - 2.0 * atr, 2)
@@ -259,10 +353,22 @@ def build_advice(
         "as_of": str(df_ohlcv.index[-1].date()),
         "close": round(close, 2),
         "score": round(score, 2),
+        "setup_score": round(setup_score, 2),
+        "env_score": round(env_score, 2),
+        "market_context_applied": bool(use_market_context),
+        "blockers": blockers,
         "fresh": fresh,
         "holding": holding,
         "factors": factors,
         "plan": plan,
         "note": ("Rule-based synthesis of the layers above — factor weights are fixed and shown, "
-                 "not fitted. It frames risk; it does not predict. Confirm with your fundamental view."),
+                 "not fitted. It frames risk; it does not predict. Confirm with your fundamental view."
+                 + ("" if use_market_context else
+                    " STOCK-ONLY VIEW: market-wide factors (NIFTY regime, sector regime, breadth, "
+                    "distribution days) are shown below but excluded from the score and cannot veto "
+                    "a verdict. Those filters are validated — ignoring them is a deliberate override, "
+                    "not a second opinion of equal standing. Note this cuts BOTH ways: it removes up "
+                    "to 4.0 points of drag against only 2.0 of lift, so it makes fresh-buy verdicts "
+                    "more permissive AND softens the holding-side exit call — a market-aware "
+                    "'exit / reduce' can read as 'tighten stop' or 'hold' here.")),
     }

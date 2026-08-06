@@ -15,9 +15,15 @@ import numpy as np
 import pandas as pd
 
 
+# Flags describing the tape rather than the stock — greyed out and excluded
+# from the lean in the stock-only view, mirroring advice.ENV_FACTORS.
+ENV_FLAGS = {"Market regime", "Distribution days"}
+
+
 def _flag(label: str, state: str, detail: str, value: str | None = None) -> dict:
     # state in {"bullish", "bearish", "neutral"}
-    return {"label": label, "state": state, "detail": detail, "value": value}
+    return {"label": label, "state": state, "detail": detail, "value": value,
+            "axis": "environment" if label in ENV_FLAGS else "setup"}
 
 
 def build_key_indicators(
@@ -25,6 +31,7 @@ def build_key_indicators(
     ind_df: pd.DataFrame,
     ctx: pd.DataFrame | None,
     levels: list[dict] | None,
+    use_market_context: bool = True,
 ) -> dict:
     close = float(df_ohlcv["Close"].iloc[-1])
     atr = float(ind_df["ATR"].iloc[-1]) if np.isfinite(ind_df["ATR"].iloc[-1]) else close * 0.02
@@ -140,7 +147,11 @@ def build_key_indicators(
         flags.append(_flag("Market regime", "bullish" if mkt_up else "bearish",
                            "NIFTY is in an uptrend (MA20>MA50) — the backdrop the engine requires for fresh longs."
                            if mkt_up else
-                           "NIFTY is in a downtrend — the engine gates ALL fresh longs off here (validated market filter)."))
+                           "NIFTY is in a downtrend — the engine gates fresh longs off here, Hammer reversals "
+                           "excepted (validated market filter)."
+                           if use_market_context else
+                           "NIFTY is in a downtrend. In the default view the engine gates fresh longs off here; "
+                           "you are looking at the stock-only view, so it is not being applied."))
         rs20 = last.get("rs_20")
         if rs20 is not None and np.isfinite(rs20):
             rs20 = float(rs20)
@@ -152,10 +163,22 @@ def build_key_indicators(
         if dist is not None and np.isfinite(dist) and float(dist) >= 5:
             flags.append(_flag("Distribution days", "bearish",
                                f"{int(dist)} distribution days in 25 sessions (index down on rising volume — big-fund selling). "
-                               f"At 5+, our test showed new buying does badly; the engine pauses fresh buys until it clears."))
+                               f"At 5+, our test showed new buying does badly; the engine pauses fresh buys until it clears."
+                               if use_market_context else
+                               f"{int(dist)} distribution days in 25 sessions (index down on rising volume — big-fund selling). "
+                               f"The default view pauses fresh buys at 5+; this stock-only view does not."))
 
-    bulls = sum(1 for f in flags if f["state"] == "bullish")
-    bears = sum(1 for f in flags if f["state"] == "bearish")
+    # In the stock-only view the tape flags stay VISIBLE but stop counting —
+    # otherwise the lean here would contradict the advice card sitting above it,
+    # which has already excluded exactly these factors from its score.
+    if not use_market_context:
+        for f in flags:
+            if f["axis"] == "environment":
+                f["ignored"] = True
+
+    counted = [f for f in flags if not f.get("ignored")]
+    bulls = sum(1 for f in counted if f["state"] == "bullish")
+    bears = sum(1 for f in counted if f["state"] == "bearish")
     if bulls > bears + 1:
         lean = "bullish"
     elif bears > bulls + 1:

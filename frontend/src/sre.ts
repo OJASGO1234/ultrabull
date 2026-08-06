@@ -3,7 +3,7 @@
 // (gone when the tab closes) and travel in POST bodies, never URLs.
 import { rangeToQuery, type RangeQuery } from './api'
 import { authFetch } from './auth'
-import type { IfBreakout, KeyIndicators } from './types'
+import type { IfBreakout, KeyIndicators, ViewName } from './types'
 
 export interface SreHolding {
   broker?: 'SRE' | 'Groww'
@@ -54,10 +54,25 @@ export interface SignalLevel {
   strength: number | null
 }
 
+/** The market-context-sensitive slice of a compact signal — everything else
+ * (plan, levels, timing) is level-based and identical across views. */
+export interface SignalViewDigest {
+  score: number | null
+  fresh: SignalVerdict | null
+  holding: SignalVerdict | null
+  factors: { name: string; score: number; detail: string }[]
+  market_context_applied: boolean | null
+  outlook_1w: { p_up: number | null; verdict: string | null; n: number | null; fallback: boolean | null }
+  key_indicators: KeyIndicators | null
+}
+
 export interface CompactSignal {
   symbol: string
   last_date: string | null
   close: number | null
+  /** market-aware and stock-only verdicts side by side — pick with `views[view]`. */
+  views: Partial<Record<ViewName, SignalViewDigest>>
+  /** back-compat mirror of views.market_aware */
   score: number | null
   fresh: SignalVerdict | null
   holding: SignalVerdict | null

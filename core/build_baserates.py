@@ -60,7 +60,9 @@ def main(cache_dir: str | None):
 
     table: dict = {"_meta": {
         "symbols": len(rows), "bars": int(len(pool)),
-        "horizons": HORIZONS, "note": "pooled 4y daily, NSE universe",
+        "horizons": HORIZONS,
+        "note": "pooled 4y daily, NSE universe; mkt=any|… rows are the same "
+                "stock state marginalized over both NIFTY regimes (stock-only view)",
     }}
     # unconditional fallback
     def _stats(v: pd.Series) -> dict:
@@ -78,6 +80,15 @@ def main(cache_dir: str | None):
 
     table["_all"] = {name: _stats(pool[name]) for name in HORIZONS}
     for state, g in pool.groupby("state"):
+        table[state] = {name: _stats(g[name]) for name in HORIZONS}
+
+    # Market-marginalized rows (`mkt=any|…`): the same stock state pooled ACROSS
+    # both NIFTY regimes. outlook.py reads these for the stock-only view — the
+    # alternative (dropping ctx and letting current_state default to mkt="up")
+    # would silently quote bull-market base rates for a stock the user is
+    # looking at precisely because they want the market taken out of the answer.
+    pool["state_any"] = pool["state"].str.replace(r"^mkt=(?:up|dn)\|", "mkt=any|", regex=True)
+    for state, g in pool.groupby("state_any"):
         table[state] = {name: _stats(g[name]) for name in HORIZONS}
 
     with open("state_baserates.json", "w") as f:

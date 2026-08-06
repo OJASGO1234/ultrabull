@@ -167,6 +167,7 @@ export interface Outlook {
     rsi: number
   }
   horizons: Record<'1d' | '1w' | '1m' | '3m', OutlookHorizon>
+  market_context_applied?: boolean
   nearest_support: number | null
   nearest_resistance: number | null
   note: string
@@ -176,12 +177,28 @@ export interface AdviceFactor {
   name: string
   score: number
   detail: string
+  /** "setup" = evidence about this stock; "environment" = the tape; "veto" =
+   * a sentinel-scored blocker (earnings blackout) that belongs to neither sum. */
+  axis?: 'setup' | 'environment' | 'veto'
+  /** True in the stock-only view: shown for transparency, excluded from the score. */
+  ignored?: boolean
+}
+
+/** A tape condition vetoing or dragging an otherwise-fine setup. */
+export interface AdviceBlocker {
+  name: string
+  detail: string
+  clears_when: string
 }
 
 export interface Advice {
   as_of: string
   close: number
   score: number
+  setup_score?: number
+  env_score?: number
+  market_context_applied?: boolean
+  blockers?: AdviceBlocker[]
   fresh: { verdict: string; reason: string }
   holding: { verdict: string; reason: string }
   factors: AdviceFactor[]
@@ -198,11 +215,39 @@ export interface Advice {
   note: string
 }
 
+export type ViewName = 'market_aware' | 'stock_only'
+
+export interface AnalysisView {
+  label: string
+  advice: Advice | null
+  outlook: Outlook | null
+  /** The whole backtest is recomputed per view, so a view is self-consistent. */
+  metrics: Metrics | null
+  key_indicators: KeyIndicators | null
+  by_pattern: ByPatternRow[]
+  signals: SignalRow[]
+  trades: Trade[]
+  equity: Point[]
+  /** stock_only only: what was lifted/kept, and what that costs. `lifted_gates`
+   * (backtest filters) and `lifted_score_factors` (advice-score inputs) are
+   * deliberately separate — they are not the same set. */
+  lifted_gates?: string[]
+  lifted_score_factors?: string[]
+  already_off?: string[]
+  kept_filters?: string[]
+  warning?: string
+}
+
+export type AnalysisViews = Record<ViewName, AnalysisView>
+
 export interface KeyFlag {
   label: string
   state: 'bullish' | 'bearish' | 'neutral'
   detail: string
   value: string | null
+  axis?: 'setup' | 'environment'
+  /** True in the stock-only view: still shown, but excluded from the lean. */
+  ignored?: boolean
 }
 
 export interface KeyIndicators {
@@ -288,6 +333,8 @@ export interface AnalysisResponse {
   levels: Level[]
   outlook: Outlook | null
   advice: Advice | null
+  /** Both views of the same run; top-level advice/outlook mirror `market_aware`. */
+  views: AnalysisViews | null
   key_indicators: KeyIndicators | null
   fundamentals: Fundamentals | null
   interpretations: { rsi: string | null; macd: string | null; equity: string | null } | null

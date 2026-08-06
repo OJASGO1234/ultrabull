@@ -129,6 +129,22 @@ def rebuild_and_calibrate(cache_dir: str | None) -> dict:
     table["_all"] = {name: _stats(pool[name]) for name in HORIZONS}
     for st, g in pool.groupby("state"):
         table[st] = {name: _stats(g[name]) for name in HORIZONS}
+    # Market-marginalized rows for the stock-only view — see build_baserates.py.
+    # This is the table outlook.py actually prefers, so the rows must be minted
+    # here too, not only in build_baserates.
+    #
+    # Note the shrink factors below are fit on the market-CONDITIONED states only
+    # (_fit_shrink groups by "state", not "state_any") and outlook._calibrate then
+    # applies the same k to these pooled rows. Measured, pooled rows sit about as
+    # far from 0.5 but carry ~half the state-specific dispersion and double the n,
+    # so their ideal k would be closer to 1: reusing the conditioned k OVER-shrinks
+    # the stock-only outlook toward "no edge". The error is small (<=0.006 in
+    # calibrated p) and points the safe way — it can never make the stock-only view
+    # look more bullish than the evidence — so it is accepted deliberately.
+    pool = pool.copy()
+    pool["state_any"] = pool["state"].str.replace(r"^mkt=(?:up|dn)\|", "mkt=any|", regex=True)
+    for st, g in pool.groupby("state_any"):
+        table[st] = {name: _stats(g[name]) for name in HORIZONS}
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(BASERATES_OUT, "w") as f:
         json.dump(table, f, indent=1)

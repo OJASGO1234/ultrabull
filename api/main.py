@@ -25,6 +25,7 @@ import sqlite3
 import threading
 import time
 from datetime import date as _date_cls
+from typing import Literal
 
 import anthropic
 import numpy as np
@@ -186,7 +187,77 @@ def build_cfg() -> dict:
     return cfg
 
 
+def stock_only_cfg(cfg: dict) -> dict:
+    """`cfg` with the market-timing filters lifted — the config behind the
+    stock-only view.
+
+    What this ACTUALLY changes as a backtest gate is narrower than it looks:
+    build_cfg already ships require_sector_regime=False and breadth_min=0.0
+    (both tested and left off), so only two gates really flip — the NIFTY
+    regime requirement and the distribution-day ceiling. The sector-regime and
+    breadth entries below are set defensively, not because they were on.
+
+    Separately, and this is the part users see: build_advice drops all four
+    market factors (regime, sector, breadth, distribution days) from the SCORE
+    in this view. So the toggle changes the advice card more than it changes
+    the backtest. Do not describe the two as if they were the same lift.
+
+    ON:  relative strength vs sector (stock selection, separately validated),
+         earnings blackout, liquidity floor, and every stock-level gate.
+
+    This exists so the UI can show what the analysis looks like without the
+    market-timing layer — NOT because that view is equally supported. The
+    regime gate is strongly validated (pool excess -6.9 -> +9.6 bps at 10
+    bars). The distribution-day ceiling is weaker than its original headline:
+    core/dist_day_study.py (Jul 2026) finds recent-12m separation only at 5-10
+    bars (block-bootstrap p 0.07/0.06), none in the prior 3 years, and a sign
+    flip at 1 bar — kept as shipped because the evidence cannot move it either
+    way, not because it was re-confirmed.
+    """
+    c = copy.deepcopy(cfg)
+    c.setdefault("gates", {}).setdefault("market", {})
+    c["gates"]["market"].update({
+        "enabled": True,            # keep the block alive so RS still applies
+        "require_market_regime": False,
+        "require_sector_regime": False,
+        "dist_days_max": 0.0,       # 0 disables the ceiling
+        "breadth_min": 0.0,
+    })
+    return c
+
+
 # ---------- JSON-safe serialization helpers ----------
+
+def _metrics_json(metrics: dict) -> dict:
+    """Backtest summary -> JSON-safe dict (NumPy floats break FastAPI)."""
+    metrics = metrics or {}
+    return {
+        "trades": int(metrics.get("trades", 0)),
+        "win_rate": _num(metrics.get("win_rate")),
+        "avg_win": _num(metrics.get("avg_win")),
+        "avg_loss": _num(metrics.get("avg_loss")),
+        "profit_factor": _num_or_inf(metrics.get("profit_factor")),
+        "expectancy": _num(metrics.get("expectancy")),
+        "median_hold_bars": _num(metrics.get("median_hold_bars")),
+        "return_total": _num(metrics.get("return_total")),
+        "max_drawdown": _num(metrics.get("max_drawdown")),
+        "sharpe_daily": _num(metrics.get("sharpe_daily")),
+    }
+
+
+def _by_pattern_json(by_pat) -> list[dict]:
+    """Per-pattern backtest breakdown -> JSON-safe rows."""
+    if by_pat is None or not len(by_pat):
+        return []
+    return [{
+        "tag": tag,
+        "trades": int(r["trades"]),
+        "win_rate": _num(r["win_rate"]),
+        "total_pnl": _num(r["total_pnl"]),
+        "avg_pnl": _num(r["avg_pnl"]),
+        "profit_factor": _num_or_inf(r["profit_factor"]),
+    } for tag, r in by_pat.iterrows()]
+
 
 def _num(x):
     """float | None; NaN/Inf -> None (JSON has no NaN)."""
@@ -502,33 +573,41 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
             "tp_est": plan["tp_est"],
         })
 
-    signals_json = []
-    for r in signals.itertuples(index=False):
-        bar = int(getattr(r, "bar_idx"))
-        plan = _plan(getattr(r, "tag"), None, bar=bar,
-                     sl_atr=getattr(r, "sl_atr", None), tp_atr=getattr(r, "tp_atr", None),
-                     side=getattr(r, "side", None))
-        signals_json.append({
-            "bar_idx": bar,
-            "date": _bar_date(df_ohlcv, bar),
-            "side": getattr(r, "side"),
-            "tag": getattr(r, "tag"),
-            "score": _num(getattr(r, "score", None)),
-            "priority": _num(getattr(r, "priority", None)),
-            "enter_at": getattr(r, "enter_at", None),
-            "delay_bars": _num(getattr(r, "delay_bars", None)),
-            "sl_atr": _num(getattr(r, "sl_atr", None)),
-            "tp_atr": _num(getattr(r, "tp_atr", None)),
-            "trail_atr": _num(getattr(r, "trail_atr", None)),
-            "ref_close": plan["ref_close"],
-            "sl_est": plan["sl_est"],
-            "tp_est": plan["tp_est"],
-        })
+    # Both views serialize signals/trades the same way — the pools differ, not
+    # the shape.
+    def _signals_rows(sig) -> list[dict]:
+        rows = []
+        for r in sig.itertuples(index=False):
+            bar = int(getattr(r, "bar_idx"))
+            plan = _plan(getattr(r, "tag"), None, bar=bar,
+                         sl_atr=getattr(r, "sl_atr", None), tp_atr=getattr(r, "tp_atr", None),
+                         side=getattr(r, "side", None))
+            rows.append({
+                "bar_idx": bar,
+                "date": _bar_date(df_ohlcv, bar),
+                "side": getattr(r, "side"),
+                "tag": getattr(r, "tag"),
+                "score": _num(getattr(r, "score", None)),
+                "priority": _num(getattr(r, "priority", None)),
+                "enter_at": getattr(r, "enter_at", None),
+                "delay_bars": _num(getattr(r, "delay_bars", None)),
+                "sl_atr": _num(getattr(r, "sl_atr", None)),
+                "tp_atr": _num(getattr(r, "tp_atr", None)),
+                "trail_atr": _num(getattr(r, "trail_atr", None)),
+                "ref_close": plan["ref_close"],
+                "sl_est": plan["sl_est"],
+                "tp_est": plan["tp_est"],
+            })
+        return rows
 
-    trades_json = []
-    if len(trades):
-        for r in trades.itertuples(index=False):
-            trades_json.append({
+    signals_json = _signals_rows(signals)
+
+    def _trades_rows(trd) -> list[dict]:
+        rows = []
+        if not len(trd):
+            return rows
+        for r in trd.itertuples(index=False):
+            rows.append({
                 "entry_bar": int(r.entry_bar),
                 "exit_bar": int(r.exit_bar),
                 "entry_date": _bar_date(df_ohlcv, int(r.entry_bar)),
@@ -544,18 +623,11 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
                 "fees": _num(r.fees),
                 "reason": r.reason,
             })
+        return rows
 
-    by_pattern_json = []
-    if len(by_pat):
-        for tag, r in by_pat.iterrows():
-            by_pattern_json.append({
-                "tag": tag,
-                "trades": int(r["trades"]),
-                "win_rate": _num(r["win_rate"]),
-                "total_pnl": _num(r["total_pnl"]),
-                "avg_pnl": _num(r["avg_pnl"]),
-                "profit_factor": _num_or_inf(r["profit_factor"]),
-            })
+    trades_json = _trades_rows(trades)
+
+    by_pattern_json = _by_pattern_json(by_pat)
 
     n_checked = int((trades["reason"].isin(["SL", "TP"])).sum()) if len(trades) else 0
     audit_json = {
@@ -612,10 +684,55 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
     except Exception:
         advice_json = None
 
+    # ---- stock-only view: the same analysis with the market-timing filters
+    # lifted, computed here so the UI toggle is instant and both views come
+    # from one data fetch. Never the default; see stock_only_cfg().
+    try:
+        so_outlook_json = build_outlook(ind_df, ctx, raw_levels,
+                                        float(df_ohlcv["Close"].iloc[-1]),
+                                        use_market_context=False)
+    except Exception:
+        so_outlook_json = None
+
+    try:
+        so_advice_json = build_advice(df_ohlcv, ind_df, ctx, raw_levels, timing_json,
+                                      det_enriched, use_market_context=False)
+    except Exception:
+        so_advice_json = None
+
+    # …and what lifting them costs in this symbol's own backtest. The whole
+    # backtest is recomputed, not just the headline metrics, so the UI can show
+    # one coherent story per view instead of stock-only verdicts sitting above
+    # a market-aware equity curve.
+    so_metrics = so_by_pattern = None
+    so_signals_json: list[dict] = []
+    so_trades_json: list[dict] = []
+    so_equity_points: list[dict] = []
+    try:
+        if detections is not None and not detections.empty:
+            so_cfg = stock_only_cfg(cfg)
+            so_gated = apply_gates(det_enriched, df_ohlcv, ind_df, so_cfg, ctx=ctx, events=events)
+            so_signals = compile_signals(so_gated, df_ohlcv, ind_df, so_cfg)
+            so_trades, so_equity, _ = simulate(df_ohlcv, so_signals, ind_df, so_cfg)
+            so_metrics = summarize(so_trades, so_equity)
+            so_by_pattern = by_tag(so_trades)
+            so_signals_json = _signals_rows(so_signals)
+            so_trades_json = _trades_rows(so_trades)
+            so_equity_points = _series_points(so_equity)
+    except Exception:
+        so_metrics = so_by_pattern = None
+        so_signals_json, so_trades_json, so_equity_points = [], [], []
+
     try:
         key_indicators_json = build_key_indicators(df_ohlcv, ind_df, ctx, raw_levels)
     except Exception:
         key_indicators_json = None
+
+    try:
+        so_key_indicators_json = build_key_indicators(df_ohlcv, ind_df, ctx, raw_levels,
+                                                      use_market_context=False)
+    except Exception:
+        so_key_indicators_json = None
 
     try:
         fundamentals_json = fetch_fundamentals(symbol)
@@ -653,20 +770,76 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
     except Exception:
         pass
 
-    metrics_json = {
-        "trades": int(metrics.get("trades", 0)),
-        "win_rate": _num(metrics.get("win_rate")),
-        "avg_win": _num(metrics.get("avg_win")),
-        "avg_loss": _num(metrics.get("avg_loss")),
-        "profit_factor": _num_or_inf(metrics.get("profit_factor")),
-        "expectancy": _num(metrics.get("expectancy")),
-        "median_hold_bars": _num(metrics.get("median_hold_bars")),
-        "return_total": _num(metrics.get("return_total")),
-        "max_drawdown": _num(metrics.get("max_drawdown")),
-        "sharpe_daily": _num(metrics.get("sharpe_daily")),
+    metrics_json = _metrics_json(metrics)
+
+    # Both views of the same run. Top-level advice/outlook/metrics stay the
+    # market-aware ones so chat, steward and paper keep their existing contract.
+    views_json = {
+        "market_aware": {
+            "label": "Market-aware (default)",
+            "advice": advice_json,
+            "outlook": outlook_json,
+            "key_indicators": key_indicators_json,
+            "metrics": metrics_json,
+            "by_pattern": by_pattern_json,
+            "signals": signals_json,
+            "trades": trades_json,
+            "equity": _series_points(equity),
+        },
+        "stock_only": {
+            "label": "Stock-only (market context ignored)",
+            "advice": so_advice_json,
+            "outlook": so_outlook_json,
+            "key_indicators": so_key_indicators_json,
+            "metrics": _metrics_json(so_metrics) if so_metrics is not None else None,
+            "by_pattern": _by_pattern_json(so_by_pattern),
+            "signals": so_signals_json,
+            "trades": so_trades_json,
+            "equity": so_equity_points,
+            # Split deliberately: conflating "gates that stopped trades in the
+            # backtest" with "factors that moved the advice score" would claim
+            # more was lifted than actually was.
+            "lifted_gates": [
+                "NIFTY market-regime requirement",
+                "distribution-day ceiling (never applied to Hammer even by default)",
+            ],
+            "lifted_score_factors": [
+                "NIFTY market regime",
+                "sector regime",
+                "market breadth",
+                "distribution days",
+            ],
+            "already_off": [
+                "sector-regime gate and breadth floor were NOT active as backtest "
+                "gates in the default view either — both were tested and left off",
+            ],
+            "kept_filters": [
+                "relative strength vs sector",
+                "earnings blackout",
+                "liquidity floor",
+                "all stock-level pattern gates",
+            ],
+            "warning": (
+                "The market-regime gate lifted here is strongly validated: removing it "
+                "took pooled excess from +9.6 bps back to -6.9 bps at 10 bars. The "
+                "distribution-day ceiling is weaker — a Jul-2026 recheck "
+                "(core/dist_day_study.py) found its recent-12-month separation "
+                "directionally right at 5-10 bars (+74/+167 bps, one-sided block-bootstrap "
+                "p 0.07 and 0.06) but absent in the prior 3 years and REVERSED at 1 bar, "
+                "so it was left as shipped rather than re-tuned. It binds hard at the "
+                "moment — 85.8% of the last 120 sessions vs 50.9% across 4 years — partly "
+                "because the threshold sits at the 4-year median and partly because the "
+                "count has genuinely shifted right (median 6 over the last 120 sessions). "
+                "This view is also more permissive by construction: it removes up to 4.0 "
+                "points of drag against only 2.0 of lift, which softens the holding-side "
+                "exit call as well as loosening fresh buys. Use it to understand the stock "
+                "in isolation, not as a second opinion of equal standing."
+            ),
+        },
     }
 
     return {
+        "views": views_json,
         "symbol": symbol,
         "years": years,
         "bars": len(df_ohlcv),
@@ -778,6 +951,31 @@ chart with support/resistance levels, backtest results, and pattern detections.
 You receive the CURRENT analysis payload as JSON. Ground every answer in it — quote the \
 actual numbers (prices, percentages, dates) rather than speaking generically. If the \
 payload doesn't contain what's needed, say so plainly instead of guessing.
+
+The analysis exists in TWO views. The top-level `advice`/`outlook`/`key_indicators`/\
+`metrics`/`trades`/`signals`/`by_pattern` fields ARE the market-aware view (it is not \
+repeated under `views`, to keep this payload small). `views.stock_only` holds the other \
+one, and `active_view` says which the user is looking at. ANSWER FROM THAT ONE — when \
+`active_view` is `stock_only`, ignore the top-level fields and quote `views.stock_only.*`, \
+or you will contradict what is on the user's screen.
+
+`market_aware` is the default and the supported one. `stock_only` removes the four \
+market factors (NIFTY regime, sector regime, breadth, distribution days) from the advice \
+SCORE, and lifts two actual backtest gates: the NIFTY regime requirement and the \
+distribution-day ceiling. Be precise about that difference — the sector-regime gate and \
+breadth floor were already off as gates in BOTH views, so do not tell the user they were \
+switched off. It keeps relative strength, the earnings blackout and the liquidity floor.
+
+If the user is on `stock_only`, answer their question there, but do not present its \
+verdict as equally supported: it drops up to 4.0 points of drag against only 2.0 of \
+lift, so it loosens fresh-buy calls AND softens holding-side exit calls. The view's own \
+`warning` field carries the measured cost — use its numbers, don't invent your own.
+
+Each advice object splits its score into `setup_score` (this stock) and `env_score` (the \
+tape); when a setup is strong but the environment is vetoing it, say exactly that and \
+quote `blockers[].clears_when` so the user knows what would change the answer. An empty \
+`blockers` list means the tape is NOT what is holding the verdict back — do not invent \
+one.
 
 Project-validated knowledge you should apply (from this system's own 35-symbol, 4-year \
 event studies):
@@ -915,16 +1113,39 @@ class ChatRequest(BaseModel):
     start: str | None = None
     end: str | None = None
     messages: list[ChatMessage]
+    # Which analysis view the user is looking at. Constrained so a client typo
+    # 422s instead of silently degrading to "no view stated".
+    view: Literal["market_aware", "stock_only"] = "market_aware"
 
 
-def _chat_context(result: dict) -> str:
-    """Compact analysis context: everything except the heavy per-bar series."""
+def _chat_context(result: dict, view: str = "market_aware") -> str:
+    """Compact analysis context: everything except the heavy per-bar series.
+
+    Both views ship in the payload; `active_view` tells Claude which one the
+    user is actually looking at so its answer matches their screen.
+    """
     slim = {k: v for k, v in result.items() if k not in ("ohlcv", "indicators", "equity")}
     slim["detections"] = [d for d in slim.get("detections", []) if d.get("qualified")][-15:]
     slim["signals"] = slim.get("signals", [])[-15:]
     slim["trades"] = slim.get("trades", [])[-15:]
     slim["last_close"] = result["ohlcv"][-1]["close"] if result.get("ohlcv") else None
     slim.pop("summary_md", None)
+
+    # `views` must be slimmed the same way the top level is, or every chat turn
+    # re-sends the whole analysis twice. market_aware is dropped outright — it is
+    # byte-for-byte the top-level fields — and the remaining view loses its
+    # per-bar equity series and long tables. Left untouched this doubled the
+    # context (+111%, ~25k uncached input tokens per message).
+    views = result.get("views") or {}
+    if views:
+        slim["views"] = {
+            name: {**{k: val for k, val in v.items() if k != "equity"},
+                   "signals": (v.get("signals") or [])[-15:],
+                   "trades": (v.get("trades") or [])[-15:]}
+            for name, v in views.items() if name != "market_aware" and v
+        }
+        if views.get(view):
+            slim["active_view"] = view
     return json.dumps(slim, default=str)
 
 
@@ -958,7 +1179,7 @@ def chat(req: ChatRequest):
     system_blocks = [
         {"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}},
         {"type": "text",
-         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result)}"},
+         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result, req.view)}"},
     ]
     try:
         # short agentic loop: Claude may call test_rule to backtest user ideas
@@ -1043,10 +1264,35 @@ def idea(req: IdeaRequest):
         raise HTTPException(status_code=422, detail=str(e))
 
 
+def _view_digest(result: dict, view: str) -> dict:
+    """The market-context-sensitive slice of a view (score/verdicts/factors/
+    key indicators) — everything else in the compact signal (plan, levels,
+    timing) is level-based and identical across views."""
+    v = ((result.get("views") or {}).get(view)) or {}
+    advice = v.get("advice") or (result.get("advice") if view == "market_aware" else None) or {}
+    outlook = v.get("outlook") or (result.get("outlook") if view == "market_aware" else None) or {}
+    h1w = ((outlook or {}).get("horizons") or {}).get("1w") or {}
+    factors = [f for f in (advice.get("factors") or []) if abs(f.get("score") or 0) > 0]
+    factors.sort(key=lambda f: -abs(f.get("score") or 0))
+    return {
+        "score": _num(advice.get("score")),
+        "fresh": advice.get("fresh"),
+        "holding": advice.get("holding"),
+        "factors": factors[:4],
+        "market_context_applied": advice.get("market_context_applied"),
+        "outlook_1w": {"p_up": _num(h1w.get("p_up")), "verdict": h1w.get("verdict"),
+                       "n": h1w.get("n"), "fallback": h1w.get("fallback")},
+        "key_indicators": v.get("key_indicators") or (result.get("key_indicators") if view == "market_aware" else None),
+    }
+
+
 def _compact_signal(result: dict) -> dict:
     """Row-sized digest of a full analysis for the holdings table: verdicts,
     plan (stop/target), nearest support/resistance with distance, breakout
-    state, and the 1-week base rate."""
+    state, and the 1-week base rate. `views` carries the market-aware and
+    stock-only verdicts side by side (mirroring /api/analyze's views_json) so
+    the holdings table can toggle without a second fetch or an inconsistent
+    snapshot store."""
     advice = result.get("advice") or {}
     plan = advice.get("plan") or {}
     close = advice.get("close")
@@ -1083,17 +1329,21 @@ def _compact_signal(result: dict) -> dict:
     except (ValueError, KeyError):
         pass
 
-    factors = [f for f in (advice.get("factors") or []) if abs(f.get("score") or 0) > 0]
-    factors.sort(key=lambda f: -abs(f.get("score") or 0))
-    h1w = ((result.get("outlook") or {}).get("horizons") or {}).get("1w") or {}
+    views = {name: _view_digest(result, name) for name in (result.get("views") or {"market_aware": None}).keys()}
+    if not views:
+        views = {"market_aware": _view_digest(result, "market_aware")}
+    default = views.get("market_aware") or next(iter(views.values()))
 
     return {
         "symbol": result["symbol"],
         "last_date": result.get("last_date"),
         "close": _num(close),
-        "score": _num(advice.get("score")),
-        "fresh": advice.get("fresh"),
-        "holding": advice.get("holding"),
+        "views": views,
+        # kept for back-compat with any caller still reading top-level
+        # verdict fields — always the market-aware view, same as before.
+        "score": default.get("score"),
+        "fresh": default.get("fresh"),
+        "holding": default.get("holding"),
         "stop": _num(plan.get("stop")),
         "stop_basis": plan.get("stop_basis"),
         "target": _num(plan.get("target1")),
@@ -1113,10 +1363,9 @@ def _compact_signal(result: dict) -> dict:
             "above_all_resistance": bool(close is not None and res is None and levels),
             "recent_breakout": recent_breakout,
         },
-        "factors": factors[:4],
-        "outlook_1w": {"p_up": _num(h1w.get("p_up")), "verdict": h1w.get("verdict"),
-                       "n": h1w.get("n"), "fallback": h1w.get("fallback")},
-        "key_indicators": result.get("key_indicators"),
+        "factors": default.get("factors") or [],
+        "outlook_1w": default.get("outlook_1w"),
+        "key_indicators": default.get("key_indicators"),
         "in_earnings_blackout": bool((result.get("timing") or {}).get("in_earnings_blackout")),
         "next_earnings": (result.get("timing") or {}).get("next_earnings"),
         "expected_results_window": (result.get("timing") or {}).get("expected_results_window"),
@@ -1703,6 +1952,7 @@ def run_intraday(symbol: str, interval: str, years: float = 1.0,
         "detections": detections_json,
         # daily-only — intentionally absent on intraday
         "events": [], "context": None, "timing": None, "outlook": None, "advice": None,
+        "views": None,
         "key_indicators": None, "fundamentals": None, "interpretations": None, "indexes": [],
         "signals": [], "trades": [], "equity": [], "metrics": {}, "by_pattern": [],
         "audit": {"checked": 0, "mismatch_count": 0, "ok": True}, "signal_summary": {},

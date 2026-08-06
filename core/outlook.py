@@ -71,8 +71,16 @@ def _calibrate(p_up: float | None, name: str) -> tuple[float | None, float | Non
     return round(min(1.0, max(0.0, 0.5 + float(k) * (p_up - 0.5))), 4), float(k)
 
 
-def current_state(ind_df: pd.DataFrame, ctx: pd.DataFrame | None) -> dict:
-    """State vector for the latest bar, mirroring build_baserates.state_series."""
+def current_state(ind_df: pd.DataFrame, ctx: pd.DataFrame | None,
+                  use_market_context: bool = True) -> dict:
+    """State vector for the latest bar, mirroring build_baserates.state_series.
+
+    With `use_market_context=False` the market dimension is MARGINALIZED, not
+    dropped: the key becomes `mkt=any|…`, which build_baserates/calibrate emit
+    by pooling the same stock state across both NIFTY regimes. Dropping ctx
+    instead would fall through to the `mkt="up"` default below and quote
+    bull-market base rates — cheerier numbers than any evidence supports.
+    """
     ma20 = float(ind_df["MA20"].iloc[-1])
     ma50 = float(ind_df["MA50"].iloc[-1])
     trend = "up" if ma20 > ma50 else "dn"
@@ -85,6 +93,8 @@ def current_state(ind_df: pd.DataFrame, ctx: pd.DataFrame | None) -> dict:
         rs = "+" if (rs_v is not None and np.isfinite(rs_v) and rs_v >= 0) else "-"
     else:
         mkt, rs = "up", "+"
+    if not use_market_context:
+        mkt = "any"   # relative strength stays: it is stock-vs-sector, not tape
     return {
         "key": f"mkt={mkt}|trend={trend}|rs={rs}|rsi={band}",
         "market": mkt, "trend": trend, "rs": rs, "rsi_band": band,
@@ -107,8 +117,9 @@ def build_outlook(
     ctx: pd.DataFrame | None,
     levels: list[dict] | None,
     close: float,
+    use_market_context: bool = True,
 ) -> dict:
-    state = current_state(ind_df, ctx)
+    state = current_state(ind_df, ctx, use_market_context=use_market_context)
     table = _load_table()
     row = table.get(state["key"]) or {}
     fallback = table.get("_all", {})
@@ -146,14 +157,21 @@ def build_outlook(
     return {
         "state": state,
         "horizons": horizons,
+        "market_context_applied": bool(use_market_context),
         "nearest_support": None if nearest_support is None else nearest_support["price"],
         "nearest_resistance": None if nearest_resistance is None else nearest_resistance["price"],
         "note": (
             "How to read this: we found every day in the past 4 years (across 35 NSE stocks) "
-            "that looked like today — same market trend, stock trend, sector standing and RSI "
+            "that looked like today — same "
+            + ("market trend, stock trend" if use_market_context else "stock trend")
+            + ", sector standing and RSI "
             "zone — and counted what happened next. \"57% closed higher\" means 57 of every 100 "
             "similar days ended up — a lean, not a forecast. No situation in this data ever "
             "predicted a week ahead better than ~58 in 100, so let the support/resistance "
             "levels decide your entries, not this card."
+            + ("" if use_market_context else
+               " STOCK-ONLY VIEW: these base rates pool days from BOTH rising and falling "
+               "NIFTY regimes, so they include the bad tape you asked to look past — they are "
+               "not the numbers for a good market.")
         ),
     }

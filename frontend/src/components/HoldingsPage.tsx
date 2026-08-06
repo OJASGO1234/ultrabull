@@ -11,9 +11,10 @@ import {
 } from '../sre'
 import { fetchHoldDates, fetchXirr, saveHoldDate, type XirrResult } from '../sre'
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from '../api'
-import type { AnalysisResponse } from '../types'
+import type { AnalysisResponse, ViewName } from '../types'
 import { PriceChart } from './PriceChart'
 import { KeyIndicators } from './KeyIndicators'
+import { MarketContextToggle } from './MarketContextToggle'
 import { useLiveQuotes } from '../live'
 
 type SignalState =
@@ -175,7 +176,22 @@ function newsField(item: Record<string, unknown>, names: string[]): string | nul
   return null
 }
 
-export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpenAnalysis: (symbol: string) => void }) {
+/** The market-context-sensitive slice of a stored signal — falls back to the
+ * top-level (market-aware) fields for snapshots computed before `views` shipped. */
+function viewOf(s: CompactSignal, view: ViewName) {
+  return s.views?.[view] ?? {
+    score: s.score, fresh: s.fresh, holding: s.holding, factors: s.factors,
+    market_context_applied: view === 'market_aware', outlook_1w: s.outlook_1w,
+    key_indicators: s.key_indicators,
+  }
+}
+
+export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
+  theme: Theme
+  onOpenAnalysis: (symbol: string) => void
+  view: ViewName
+  onViewChange: (v: ViewName) => void
+}) {
   const saved = loadCreds()
   const [clientId, setClientId] = useState(saved.clientId)
   const [token, setToken] = useState(saved.token)
@@ -587,6 +603,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
               </button>
             </span>
           </div>
+          <MarketContextToggle view={view} onChange={onViewChange} />
           <p className="chart-note">
             Qty and avg cost come from the broker; <b>Price ₹ and P&L use Yahoo's latest close</b> (SRE's holdings
             quotes proved stale outside market hours — rows marked "broker" have no analysis yet and fall back to
@@ -621,6 +638,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                   const key = rowKey(h, i)
                   const st = h.yahoo_symbol ? signals[h.yahoo_symbol] : undefined
                   const s = st?.status === 'ok' ? st.signal : null
+                  const sv = s ? viewOf(s, view) : null
                   const lq = liveFor(h)
                   const usingYahoo = s?.close != null
                   const price = effPrice(h)
@@ -701,10 +719,10 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                         ) : s ? (
                           <>
                             <td>
-                              <VerdictBadge verdict={s.holding?.verdict} />
+                              <VerdictBadge verdict={sv?.holding?.verdict} />
                               <span className="cell-sub"> {s.last_date}</span>
                             </td>
-                            <td><VerdictBadge verdict={s.fresh?.verdict} /></td>
+                            <td><VerdictBadge verdict={sv?.fresh?.verdict} /></td>
                             <td className="num">{fmt.price(s.stop)}</td>
                             <td className="num">{fmt.price(s.target)}</td>
                             <td className="num">
@@ -759,22 +777,28 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                 — the exit condition has already triggered; verify the live quote and decide.
                               </p>
                             )}
-                            {s ? (
+                            {s && sv ? (
                               <div className="detail-grid">
                                 <div>
+                                  {view === 'stock_only' && (
+                                    <p className="detail-warn">
+                                      Stock-only view — NIFTY regime, sector regime, breadth and distribution days are
+                                      excluded from the call below. Validated filters, lifted deliberately.
+                                    </p>
+                                  )}
                                   <p>
-                                    <b>Our call — {VERDICT_META[s.holding?.verdict ?? '']?.label ?? s.holding?.verdict}:</b>{' '}
-                                    {s.holding?.reason}
+                                    <b>Our call — {VERDICT_META[sv.holding?.verdict ?? '']?.label ?? sv.holding?.verdict}:</b>{' '}
+                                    {sv.holding?.reason}
                                   </p>
                                   <p>
-                                    <b>Fresh money — {VERDICT_META[s.fresh?.verdict ?? '']?.label ?? s.fresh?.verdict}:</b>{' '}
-                                    {s.fresh?.reason}
+                                    <b>Fresh money — {VERDICT_META[sv.fresh?.verdict ?? '']?.label ?? sv.fresh?.verdict}:</b>{' '}
+                                    {sv.fresh?.reason}
                                   </p>
                                   {s.in_earnings_blackout && (
                                     <p className="detail-warn">⚠ Results imminent — gap risk; the engine blocks fresh entries here.</p>
                                   )}
                                   <ul className="factor-list">
-                                    {s.factors.map((f, j) => (
+                                    {sv.factors.map((f, j) => (
                                       <li key={j}>
                                         <span className="factor-mark" style={{ color: f.score > 0 ? t.deltaUpText : t.deltaDownText }}>
                                           {f.score > 0 ? '+' : '−'}
@@ -803,10 +827,10 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                     {s.if_breakout?.note && (
                                       <li><b>If it breaks:</b> {s.if_breakout.note}</li>
                                     )}
-                                    {s.outlook_1w.p_up != null && (
+                                    {sv.outlook_1w.p_up != null && (
                                       <li>
-                                        1-week base rate: {Math.round(s.outlook_1w.p_up * 100)} of 100 similar days closed
-                                        higher a week later (n={s.outlook_1w.n ?? '?'}) — a lean, not a forecast
+                                        1-week base rate: {Math.round(sv.outlook_1w.p_up * 100)} of 100 similar days closed
+                                        higher a week later (n={sv.outlook_1w.n ?? '?'}) — a lean, not a forecast
                                       </li>
                                     )}
                                     {s.next_earnings && <li>Next results (announced): {s.next_earnings}</li>}
@@ -912,7 +936,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis }: { theme: Theme; onOpe
                                 onAsk={(deep) => void askClaude(h, deep)}
                               />
                             )}
-                            {s?.key_indicators && <KeyIndicators ki={s.key_indicators} theme={t} compact />}
+                            {sv?.key_indicators && <KeyIndicators ki={sv.key_indicators} theme={t} compact />}
                             {h.yahoo_symbol && charts[h.yahoo_symbol] && (
                               <div className="drawer-chart">
                                 {(() => {

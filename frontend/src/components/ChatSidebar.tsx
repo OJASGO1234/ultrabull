@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { RangeQuery } from '../api'
+import type { ViewName } from '../types'
 import { authFetch } from '../auth'
 
 interface ChatMsg {
@@ -15,11 +16,13 @@ interface Props {
   symbol: string
   range: RangeQuery
   hasData: boolean
+  /** Which analysis view is on screen, so answers match what the user sees. */
+  view?: ViewName
 }
 
 /** Toggleable analysis-assistant panel: Claude answers questions grounded in
  * the page's current analysis payload (server injects it as context). */
-export function ChatSidebar({ symbol, range, hasData }: Props) {
+export function ChatSidebar({ symbol, range, hasData, view = 'market_aware' }: Props) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
@@ -79,6 +82,7 @@ export function ChatSidebar({ symbol, range, hasData }: Props) {
           start: range.start ?? null,
           end: range.end ?? null,
           messages: next,
+          view,   // answer from the view the user is actually looking at
         }),
       })
       if (!res.ok) {
