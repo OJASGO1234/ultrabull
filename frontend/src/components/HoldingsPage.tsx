@@ -799,11 +799,15 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
                                   )}
                                   <ul className="factor-list">
                                     {sv.factors.map((f, j) => (
-                                      <li key={j}>
-                                        <span className="factor-mark" style={{ color: f.score > 0 ? t.deltaUpText : t.deltaDownText }}>
-                                          {f.score > 0 ? '+' : '−'}
+                                      <li key={j} className={f.ignored ? 'factor-ignored' : undefined}>
+                                        <span
+                                          className="factor-mark"
+                                          style={{ color: f.ignored ? t.muted : f.score > 0 ? t.deltaUpText : t.deltaDownText }}
+                                        >
+                                          {f.ignored ? '—' : f.score > 0 ? '+' : '−'}
                                         </span>
                                         <b>{f.name}</b>: {f.detail}
+                                        {f.ignored && <span className="factor-tag"> (ignored in this view)</span>}
                                       </li>
                                     ))}
                                   </ul>
@@ -945,10 +949,21 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
                                     return <p className="signal-pending">loading price chart…</p>
                                   if (ch.status === 'error')
                                     return <p className="detail-warn">Chart failed: {ch.message}</p>
+                                  // The chart's trade markers follow the selected view too — a
+                                  // stock-only verdict above market-aware entry/exit arrows would
+                                  // tell two different stories on the same row.
+                                  const chv = ch.data.views?.[view]
+                                  const chartData = chv
+                                    ? { ...ch.data, metrics: chv.metrics ?? ch.data.metrics,
+                                        by_pattern: chv.by_pattern ?? ch.data.by_pattern,
+                                        signals: chv.signals ?? ch.data.signals,
+                                        trades: chv.trades ?? ch.data.trades,
+                                        equity: chv.equity ?? ch.data.equity }
+                                    : ch.data
                                   return (
                                     <PriceChart
                                       key={`${ch.data.symbol}:${ch.data.bars}:${ch.data.last_date}`}
-                                      data={ch.data}
+                                      data={chartData}
                                       theme={t}
                                       live={lq ?? null}
                                     />

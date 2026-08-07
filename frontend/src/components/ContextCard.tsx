@@ -6,6 +6,11 @@ interface Props {
   context: MarketContext
   timing: Timing
   theme: Theme
+  /** True when the stock-only view is active: the market-regime and
+   * distribution-day gates are lifted, so their "gated off"/"paused" notes
+   * would otherwise misstate what's actually happening to this view's
+   * signals and backtest. */
+  stockOnly?: boolean
 }
 
 const regimeColor = (t: Theme, regime: string | null) =>
@@ -17,7 +22,7 @@ const regimeLabel = (regime: string | null) =>
 /** Timing intelligence: where the market/sector stands and where we are in the
  * results cycle. This is the "should I even be pressing buy this week?" card —
  * it mirrors the exact gates the signal engine applies. */
-export function ContextCard({ context: c, timing: tm, theme: t }: Props) {
+export function ContextCard({ context: c, timing: tm, theme: t, stockOnly = false }: Props) {
   const rsColor = (v: number | null) => (v == null ? undefined : v >= 0 ? t.deltaUpText : t.deltaDownText)
 
   const justReported =
@@ -41,7 +46,9 @@ export function ContextCard({ context: c, timing: tm, theme: t }: Props) {
       label: 'Market (NIFTY)',
       value: regimeLabel(c.market_regime),
       color: regimeColor(t, c.market_regime),
-      note: c.market_regime === 'downtrend' ? 'long entries gated off' : undefined,
+      note: c.market_regime === 'downtrend'
+        ? (stockOnly ? 'gate lifted in this view — not blocking fresh longs here' : 'long entries gated off')
+        : undefined,
     },
     {
       label: c.sector ? `Sector (${c.sector})` : 'Sector',
@@ -105,7 +112,9 @@ export function ContextCard({ context: c, timing: tm, theme: t }: Props) {
       color: c.dist_days == null ? undefined : c.dist_days >= 5 ? t.critical : c.dist_days >= 4 ? t.warning : undefined,
       note:
         c.dist_days != null && c.dist_days >= 5
-          ? 'index fell on rising volume 5+ times — big funds selling; new buys paused'
+          ? (stockOnly
+              ? 'index fell on rising volume 5+ times — ceiling lifted in this view, not pausing fresh buys here'
+              : 'index fell on rising volume 5+ times — big funds selling; new buys paused')
           : 'days NIFTY fell on higher volume than the day before — a footprint of funds selling',
     },
   ]

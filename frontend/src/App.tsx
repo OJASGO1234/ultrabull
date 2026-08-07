@@ -390,14 +390,14 @@ export default function App() {
           <OrderFlowGauge symbol={data.symbol} theme={theme} />
 
           {data.context && data.timing && (
-            <ContextCard context={data.context} timing={data.timing} theme={theme} />
+            <ContextCard context={data.context} timing={data.timing} theme={theme} stockOnly={stockOnly} />
           )}
 
           {data.fundamentals && <FundamentalsCard fundamentals={data.fundamentals} theme={theme} />}
 
           <PriceChart
             key={`${data.symbol}:${data.bars}:${data.last_date}`}
-            data={data}
+            data={viewData ?? data}
             theme={theme}
             live={liveQuote}
           />

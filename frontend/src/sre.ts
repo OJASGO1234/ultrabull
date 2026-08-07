@@ -60,7 +60,7 @@ export interface SignalViewDigest {
   score: number | null
   fresh: SignalVerdict | null
   holding: SignalVerdict | null
-  factors: { name: string; score: number; detail: string }[]
+  factors: { name: string; score: number; detail: string; ignored?: boolean }[]
   market_context_applied: boolean | null
   outlook_1w: { p_up: number | null; verdict: string | null; n: number | null; fallback: boolean | null }
   key_indicators: KeyIndicators | null
@@ -89,7 +89,7 @@ export interface CompactSignal {
     above_all_resistance: boolean
     recent_breakout: { pattern: string; date: string; english: string | null } | null
   }
-  factors: { name: string; score: number; detail: string }[]
+  factors: { name: string; score: number; detail: string; ignored?: boolean }[]
   outlook_1w: { p_up: number | null; verdict: string | null; n: number | null; fallback: boolean | null }
   key_indicators: KeyIndicators | null
   in_earnings_blackout: boolean
