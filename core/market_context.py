@@ -25,24 +25,63 @@ SECTOR_INDEX = {
     "MEDIA": "^CNXMEDIA", "PSUBANK": "^CNXPSUBANK", "FIN": "NIFTY_FIN_SERVICE.NS",
 }
 
-# symbol → sector key (extend as the universe grows; unknown symbols use NIFTY)
+# symbol → sector key. UNMAPPED SYMBOLS FALL BACK TO NIFTY ITSELF (see
+# build_market_context below) — which means "relative strength vs sector"
+# silently becomes "vs the market" for them, including in the stock-only view
+# that claims to ignore the market. Keep this map wide, and check
+# `rs_vs_market` downstream rather than assuming the sector benchmark held.
 SYMBOL_SECTOR = {
+    # --- banks & financials ---
     "HDFCBANK.NS": "BANK", "ICICIBANK.NS": "BANK", "SBIN.NS": "BANK",
     "AXISBANK.NS": "BANK", "KOTAKBANK.NS": "BANK", "INDUSINDBK.NS": "BANK",
-    "BAJFINANCE.NS": "FIN",
+    "FEDERALBNK.NS": "BANK", "IDFCFIRSTB.NS": "BANK", "AUBANK.NS": "BANK",
+    "BANKBARODA.NS": "PSUBANK", "PNB.NS": "PSUBANK", "CANBK.NS": "PSUBANK",
+    "UNIONBANK.NS": "PSUBANK",
+    "BAJFINANCE.NS": "FIN", "BAJAJFINSV.NS": "FIN", "SBILIFE.NS": "FIN",
+    "HDFCLIFE.NS": "FIN", "ICICIGI.NS": "FIN", "ICICIPRULI.NS": "FIN",
+    "CHOLAFIN.NS": "FIN", "SHRIRAMFIN.NS": "FIN", "MUTHOOTFIN.NS": "FIN",
+    "LICHSGFIN.NS": "FIN", "HDFCAMC.NS": "FIN", "JIOFIN.NS": "FIN",
+    # --- IT ---
     "TCS.NS": "IT", "INFY.NS": "IT", "HCLTECH.NS": "IT", "WIPRO.NS": "IT",
-    "TECHM.NS": "IT",
+    "TECHM.NS": "IT", "LTIM.NS": "IT", "PERSISTENT.NS": "IT",
+    "COFORGE.NS": "IT", "MPHASIS.NS": "IT",
+    # --- pharma & healthcare ---
     "SUNPHARMA.NS": "PHARMA", "CIPLA.NS": "PHARMA", "DRREDDY.NS": "PHARMA",
-    "SHALBY.NS": "PHARMA",
+    "SHALBY.NS": "PHARMA", "DIVISLAB.NS": "PHARMA", "LUPIN.NS": "PHARMA",
+    "AUROPHARMA.NS": "PHARMA", "TORNTPHARM.NS": "PHARMA",
+    "ZYDUSLIFE.NS": "PHARMA", "ALKEM.NS": "PHARMA", "BIOCON.NS": "PHARMA",
+    # --- auto ---
     "MARUTI.NS": "AUTO", "TATAMOTORS.NS": "AUTO", "M&M.NS": "AUTO",
-    "EICHERMOT.NS": "AUTO", "VEDL.NS": "METAL",
-    "TATASTEEL.NS": "METAL", "JSWSTEEL.NS": "METAL", "HINDALCO.NS": "METAL",
-    "HINDCOPPER.NS": "METAL", "GANESHCO.NS": "METAL",
+    "EICHERMOT.NS": "AUTO", "BAJAJ-AUTO.NS": "AUTO", "HEROMOTOCO.NS": "AUTO",
+    "TVSMOTOR.NS": "AUTO", "ASHOKLEY.NS": "AUTO", "BHARATFORG.NS": "AUTO",
+    "MOTHERSON.NS": "AUTO",
+    # --- metals ---
+    "VEDL.NS": "METAL", "TATASTEEL.NS": "METAL", "JSWSTEEL.NS": "METAL",
+    "HINDALCO.NS": "METAL", "HINDCOPPER.NS": "METAL", "GANESHCO.NS": "METAL",
+    "SAIL.NS": "METAL", "NMDC.NS": "METAL", "JINDALSTEL.NS": "METAL",
+    "NATIONALUM.NS": "METAL",
+    # --- energy & power ---
     "ONGC.NS": "ENERGY", "NTPC.NS": "ENERGY", "POWERGRID.NS": "ENERGY",
-    "RELIANCE.NS": "ENERGY", "SWSOLAR.NS": "ENERGY",
-    "ITC.NS": "FMCG", "HINDUNILVR.NS": "FMCG",
+    "RELIANCE.NS": "ENERGY", "SWSOLAR.NS": "ENERGY", "BPCL.NS": "ENERGY",
+    "IOC.NS": "ENERGY", "GAIL.NS": "ENERGY", "TATAPOWER.NS": "ENERGY",
+    "NHPC.NS": "ENERGY", "ADANIGREEN.NS": "ENERGY", "ADANIPOWER.NS": "ENERGY",
+    "TORNTPOWER.NS": "ENERGY",
+    # --- FMCG ---
+    "ITC.NS": "FMCG", "HINDUNILVR.NS": "FMCG", "NESTLEIND.NS": "FMCG",
+    "BRITANNIA.NS": "FMCG", "DABUR.NS": "FMCG", "GODREJCP.NS": "FMCG",
+    "MARICO.NS": "FMCG", "TATACONSUM.NS": "FMCG", "COLPAL.NS": "FMCG",
+    "VBL.NS": "FMCG",
+    # --- infra, cement & capital goods (follows the existing ULTRACEMCO
+    # precedent of filing cement under INFRA rather than a commodities index) ---
     "LT.NS": "INFRA", "ADANIPORTS.NS": "INFRA", "ADANIENT.NS": "INFRA",
-    "ULTRACEMCO.NS": "INFRA",
+    "ULTRACEMCO.NS": "INFRA", "SHREECEM.NS": "INFRA", "AMBUJACEM.NS": "INFRA",
+    "ACC.NS": "INFRA", "GRASIM.NS": "INFRA", "SIEMENS.NS": "INFRA",
+    "ABB.NS": "INFRA", "BEL.NS": "INFRA", "HAL.NS": "INFRA",
+    # --- realty ---
+    "DLF.NS": "REALTY", "GODREJPROP.NS": "REALTY", "OBEROIRLTY.NS": "REALTY",
+    "PRESTIGE.NS": "REALTY", "PHOENIXLTD.NS": "REALTY",
+    # --- media ---
+    "ZEEL.NS": "MEDIA", "SUNTV.NS": "MEDIA", "PVRINOX.NS": "MEDIA",
 }
 
 _index_cache: dict[tuple[str, int], pd.Series] = {}
@@ -142,6 +181,13 @@ def build_market_context(
     mkt = _load_index_close(MARKET_INDEX, max(years, 1.0) + 0.5, cache_dir)
     sect_key = SYMBOL_SECTOR.get(symbol)
     sect = _load_index_close(SECTOR_INDEX[sect_key], max(years, 1.0) + 0.5, cache_dir) if sect_key else None
+    # No sector index for this symbol → benchmark against NIFTY. That is a
+    # reasonable default, but it must not stay invisible: every "relative
+    # strength vs sector" claim downstream (the breakout RS gate, the advice
+    # setup score, the outlook rs=+/- base-rate key) then measures against the
+    # MARKET, including inside the stock-only view that says it ignores it.
+    # `rs_vs_market` carries that fact forward so the UI and any study can say so.
+    rs_vs_market = sect is None
     if sect is None:
         sect = mkt
 
@@ -164,6 +210,8 @@ def build_market_context(
     else:
         out["rs_20"] = np.nan
         out["rs_60"] = np.nan
+    # True when rs_* is measured against NIFTY because no sector index is mapped
+    out["rs_vs_market"] = bool(rs_vs_market)
 
     # market-health extras (best-effort; NaN → gates stay permissive)
     b = load_breadth()

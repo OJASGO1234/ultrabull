@@ -450,6 +450,10 @@ def _context_snapshot(symbol: str, ctx: pd.DataFrame | None, ind_df: pd.DataFram
     out = {
         "market_regime": None, "sector_regime": None, "sector": SYMBOL_SECTOR.get(symbol),
         "rs_20": None, "rs_60": None, "adx": None, "breadth": None, "dist_days": None,
+        # True when no sector index is mapped, so rs_* is measured against NIFTY
+        # itself — the one way market data still reaches the stock-only view's
+        # RS gate and setup score. Surfaced so the UI can stop calling it "sector".
+        "rs_vs_market": SYMBOL_SECTOR.get(symbol) is None,
     }
     if ctx is not None and len(ctx):
         last = ctx.iloc[-1]
@@ -553,25 +557,29 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
             "tp_est": round(ref + sgn * tp_k * a, 2),
         }
 
-    detections_json = []
-    for r in det_enriched.itertuples(index=False):
-        plan = _plan(getattr(r, "pattern"), getattr(r, "direction", None),
-                     date=getattr(r, "date"))
-        detections_json.append({
-            "date": _date(getattr(r, "date")),
-            "pattern": getattr(r, "pattern"),
-            "score": _num(getattr(r, "score", None)),
-            "strength": getattr(r, "strength", None),
-            "regime": getattr(r, "regime", None),
-            "direction": getattr(r, "direction", None),
-            "alignment": getattr(r, "alignment", None),
-            "qualified": bool(getattr(r, "qualified", False)),
-            "english": getattr(r, "english", None),
-            "side": plan["side"],
-            "ref_close": plan["ref_close"],
-            "sl_est": plan["sl_est"],
-            "tp_est": plan["tp_est"],
-        })
+    def _detections_rows(dets) -> list[dict]:
+        rows = []
+        for r in dets.itertuples(index=False):
+            plan = _plan(getattr(r, "pattern"), getattr(r, "direction", None),
+                         date=getattr(r, "date"))
+            rows.append({
+                "date": _date(getattr(r, "date")),
+                "pattern": getattr(r, "pattern"),
+                "score": _num(getattr(r, "score", None)),
+                "strength": getattr(r, "strength", None),
+                "regime": getattr(r, "regime", None),
+                "direction": getattr(r, "direction", None),
+                "alignment": getattr(r, "alignment", None),
+                "qualified": bool(getattr(r, "qualified", False)),
+                "english": getattr(r, "english", None),
+                "side": plan["side"],
+                "ref_close": plan["ref_close"],
+                "sl_est": plan["sl_est"],
+                "tp_est": plan["tp_est"],
+            })
+        return rows
+
+    detections_json = _detections_rows(det_enriched)
 
     # Both views serialize signals/trades the same way — the pools differ, not
     # the shape.
@@ -708,10 +716,17 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
     so_signals_json: list[dict] = []
     so_trades_json: list[dict] = []
     so_equity_points: list[dict] = []
+    so_detections_json: list[dict] = detections_json
     try:
         if detections is not None and not detections.empty:
             so_cfg = stock_only_cfg(cfg)
-            so_gated = apply_gates(det_enriched, df_ohlcv, ind_df, so_cfg, ctx=ctx, events=events)
+            # Re-enrich without the sector-relative term so this view's detection
+            # SCORES are market-free too. Gating is unaffected (the RS gate reads
+            # ctx directly, not this frame) — only the displayed score changes.
+            so_det_enriched = enrich_detections(detections, df_ohlcv, ind_df, symbol,
+                                                ctx=ctx, use_market_context=False)
+            so_det_enriched = so_det_enriched[so_det_enriched["date"] >= cut]
+            so_gated = apply_gates(so_det_enriched, df_ohlcv, ind_df, so_cfg, ctx=ctx, events=events)
             so_signals = compile_signals(so_gated, df_ohlcv, ind_df, so_cfg)
             so_trades, so_equity, _ = simulate(df_ohlcv, so_signals, ind_df, so_cfg)
             so_metrics = summarize(so_trades, so_equity)
@@ -719,9 +734,11 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
             so_signals_json = _signals_rows(so_signals)
             so_trades_json = _trades_rows(so_trades)
             so_equity_points = _series_points(so_equity)
+            so_detections_json = _detections_rows(so_det_enriched)
     except Exception:
         so_metrics = so_by_pattern = None
         so_signals_json, so_trades_json, so_equity_points = [], [], []
+        so_detections_json = detections_json
 
     try:
         key_indicators_json = build_key_indicators(df_ohlcv, ind_df, ctx, raw_levels)
@@ -785,6 +802,7 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
             "signals": signals_json,
             "trades": trades_json,
             "equity": _series_points(equity),
+            "detections": detections_json,
         },
         "stock_only": {
             "label": "Stock-only (market context ignored)",
@@ -796,6 +814,7 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
             "signals": so_signals_json,
             "trades": so_trades_json,
             "equity": so_equity_points,
+            "detections": so_detections_json,
             # Split deliberately: conflating "gates that stopped trades in the
             # backtest" with "factors that moved the advice score" would claim
             # more was lifted than actually was.
@@ -814,7 +833,17 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
                 "gates in the default view either — both were tested and left off",
             ],
             "kept_filters": [
-                "relative strength vs sector",
+                ("relative strength vs sector — STILL A HARD GATE: breakouts must have "
+                 "rs_20 >= 0. Unlike breadth and the distribution-day ceiling, the RS "
+                 "threshold has no 'off' guard, so 0.0 means 'must be leading', not "
+                 "'disabled'" + (
+                     f". No sector index is mapped for {symbol}, so this is measured "
+                     "against NIFTY itself — market data, in a view that says it ignores "
+                     "the market"
+                     if SYMBOL_SECTOR.get(symbol) is None else
+                     f" (benchmark: NIFTY {SYMBOL_SECTOR[symbol]})")),
+                "relative strength also scores into the setup axis and the base-rate "
+                "lookup key (rs=+/-), so it moves this view's score and outlook too",
                 "earnings blackout",
                 "liquidity floor",
                 "all stock-level pattern gates",

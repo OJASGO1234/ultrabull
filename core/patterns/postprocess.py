@@ -88,7 +88,7 @@ def add_english(dets: pd.DataFrame, symbol: str) -> pd.DataFrame:
 _REVERSAL_PATTERNS = {"Hammer", "BullishEngulfing"}
 
 
-def rescore(dets: pd.DataFrame) -> pd.DataFrame:
+def rescore(dets: pd.DataFrame, use_market_context: bool = True) -> pd.DataFrame:
     """
     Rebuild 'score' from the family base plus evidence-based modifiers, so the
     score actually ranks setups instead of being a per-family constant:
@@ -116,7 +116,13 @@ def rescore(dets: pd.DataFrame) -> pd.DataFrame:
         [align.eq("aligned"), align.eq("counter-trend") & is_rev, align.eq("counter-trend")],
         [10.0, 5.0, -10.0], default=0.0)
 
-    if "rs_20" in d.columns:
+    # Relative strength is sector- (or, for unmapped symbols, NIFTY-) derived,
+    # so it is skipped in the stock-only view. Without this the +10/-5 term rode
+    # into stock-only detection scores unannounced — the one market input in
+    # that view that nothing declared. The score is descriptive only (no gate
+    # reads it; add_qualification is score-free), so this changes what is
+    # DISPLAYED, never which trades fire.
+    if use_market_context and "rs_20" in d.columns:
         rs = pd.to_numeric(d["rs_20"], errors="coerce")
         direction = d.get("direction", pd.Series("neutral", index=d.index)).astype(str)
         rs_agrees = (direction.eq("bullish") & (rs > 0)) | (direction.eq("bearish") & (rs < 0))
@@ -177,6 +183,7 @@ def enrich_detections(
     vol_lookback: int = 20,
     high_lookback: int = 252,
     ctx: pd.DataFrame | None = None,
+    use_market_context: bool = True,
 ) -> pd.DataFrame:
     """
     Convenience wrapper: direction/alignment → features → rescore → english → qualification.
@@ -191,7 +198,7 @@ def enrich_detections(
             if c in ctx.columns:
                 feat[c] = ctx[c]
     d = merge_features(d, feat)
-    d = rescore(d)
+    d = rescore(d, use_market_context=use_market_context)
     d = add_english(d, symbol)
     d = add_qualification(d)
     return d

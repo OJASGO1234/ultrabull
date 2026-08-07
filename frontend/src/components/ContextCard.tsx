@@ -56,13 +56,21 @@ export function ContextCard({ context: c, timing: tm, theme: t, stockOnly = fals
       color: regimeColor(t, c.sector_regime),
     },
     {
-      label: 'Rel. strength 20d',
+      // The RS gate is the one market-derived filter that stays ON in the
+      // stock-only view, so its note must NOT switch to "lifted" copy — and
+      // when no sector index is mapped the benchmark is NIFTY itself, which
+      // the label has to admit rather than keep saying "sector".
+      label: `Rel. strength 20d ${c.rs_vs_market ? '(vs NIFTY)' : '(vs sector)'}`,
       value: c.rs_20 == null ? '—' : fmt.pct(c.rs_20, 1),
       color: rsColor(c.rs_20),
-      note: c.rs_20 != null && c.rs_20 < 0 ? 'lagging sector — breakouts gated' : 'vs sector index',
+      note: c.rs_20 != null && c.rs_20 < 0
+        ? `lagging ${c.rs_vs_market ? 'NIFTY' : 'sector'} — breakouts gated${stockOnly ? ' (this gate stays ON in stock-only)' : ''}`
+        : c.rs_vs_market
+          ? 'no sector index mapped for this symbol — measured against NIFTY itself'
+          : `vs the NIFTY ${c.sector} index`,
     },
     {
-      label: 'Rel. strength 60d',
+      label: `Rel. strength 60d ${c.rs_vs_market ? '(vs NIFTY)' : '(vs sector)'}`,
       value: c.rs_60 == null ? '—' : fmt.pct(c.rs_60, 1),
       color: rsColor(c.rs_60),
     },

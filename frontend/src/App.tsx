@@ -96,6 +96,7 @@ export default function App() {
         signals: activeView.signals ?? data.signals,
         trades: activeView.trades ?? data.trades,
         equity: activeView.equity ?? data.equity,
+        detections: activeView.detections ?? data.detections,
       }
     : data
 
@@ -478,7 +479,7 @@ export default function App() {
               the ₹ plan the system would attach. A detection that never became a compiled signal was
               blocked by a gate — usually market regime, relative strength, or earnings blackout.
             </p>
-            <DetectionsList detections={data.detections} />
+            <DetectionsList detections={(viewData ?? data).detections} />
             {data.signal_summary?.total_hits != null && (
               <p className="chart-note">
                 {data.signal_summary.total_hits} detections total ·{' '}

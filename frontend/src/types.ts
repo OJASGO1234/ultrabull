@@ -115,6 +115,9 @@ export interface MarketContext {
   market_regime: 'uptrend' | 'downtrend' | 'neutral' | null
   sector_regime: 'uptrend' | 'downtrend' | 'neutral' | null
   sector: string | null
+  /** True when no sector index is mapped, so rs_* is measured against NIFTY
+   * itself — market data reaching even the stock-only view. */
+  rs_vs_market?: boolean
   rs_20: number | null
   rs_60: number | null
   adx: number | null
@@ -228,6 +231,9 @@ export interface AnalysisView {
   signals: SignalRow[]
   trades: Trade[]
   equity: Point[]
+  /** Per-view: detection SCORES carry a sector-relative term in the
+   * market-aware view and drop it in stock-only. Gating is identical. */
+  detections?: Detection[]
   /** stock_only only: what was lifted/kept, and what that costs. `lifted_gates`
    * (backtest filters) and `lifted_score_factors` (advice-score inputs) are
    * deliberately separate — they are not the same set. */
