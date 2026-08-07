@@ -1764,10 +1764,32 @@ def _takes_db() -> sqlite3.Connection:
         "CREATE TABLE IF NOT EXISTS claude_takes ("
         "  symbol TEXT NOT NULL,"
         "  tier TEXT NOT NULL,"
+        "  view TEXT NOT NULL DEFAULT 'market_aware',"
         "  stored_at TEXT NOT NULL,"
         "  payload TEXT NOT NULL,"
-        "  PRIMARY KEY (symbol, tier))"
+        "  PRIMARY KEY (symbol, tier, view))"
     )
+    # Migrate pre-view rows: the old PK was (symbol, tier), so a stock-only take
+    # would have silently overwritten the market-aware one. Existing takes were
+    # all market-aware — label them as such rather than dropping them.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(claude_takes)")}
+    if "view" not in cols:
+        with conn:
+            conn.execute("ALTER TABLE claude_takes RENAME TO claude_takes_old")
+            conn.execute(
+                "CREATE TABLE claude_takes ("
+                "  symbol TEXT NOT NULL,"
+                "  tier TEXT NOT NULL,"
+                "  view TEXT NOT NULL DEFAULT 'market_aware',"
+                "  stored_at TEXT NOT NULL,"
+                "  payload TEXT NOT NULL,"
+                "  PRIMARY KEY (symbol, tier, view))"
+            )
+            conn.execute(
+                "INSERT INTO claude_takes (symbol, tier, view, stored_at, payload) "
+                "SELECT symbol, tier, 'market_aware', stored_at, payload FROM claude_takes_old"
+            )
+            conn.execute("DROP TABLE claude_takes_old")
     return conn
 
 
@@ -1777,6 +1799,22 @@ class TakeRequest(BaseModel):
     avg_price: float | None = None
     deep: bool = False
     years: float = 1.0
+    # Which analysis view the user is looking at, so the take reasons from the
+    # same numbers as their screen (same contract as ChatRequest).
+    view: Literal["market_aware", "stock_only"] = "market_aware"
+
+
+STOCK_ONLY_TAKE_NOTE = (
+    "\n\nIMPORTANT — the user is viewing the STOCK-ONLY view: the NIFTY market-regime gate "
+    "and the distribution-day ceiling are lifted, and the four market factors (market regime, "
+    "sector regime, breadth, distribution days) are excluded from the advice score. Read "
+    "`views.stock_only` in the payload, NOT the market-aware top-level fields, and base your "
+    "verdict on it. Say plainly that this view ignores validated market filters — it removes "
+    "up to 4.0 points of drag against only 2.0 of lift, so it is more permissive on fresh buys "
+    "AND softer on exits. Relative strength vs sector, the earnings blackout and the liquidity "
+    "floor still apply. If the market-aware view would reach a different verdict, say so and "
+    "name the gap."
+)
 
 
 @app.post("/api/claude/take")
@@ -1799,9 +1837,11 @@ def claude_take(req: TakeRequest):
     system_blocks = [
         {"type": "text", "text": CHAT_SYSTEM, "cache_control": {"type": "ephemeral"}},
         {"type": "text",
-         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result)}"},
+         "text": f"Current analysis payload for {symbol}:\n{_chat_context(result, req.view)}"},
         {"type": "text",
-         "text": TAKE_INSTRUCTIONS + (DEEP_INSTRUCTIONS if req.deep else "")},
+         "text": TAKE_INSTRUCTIONS
+                 + (DEEP_INSTRUCTIONS if req.deep else "")
+                 + (STOCK_ONLY_TAKE_NOTE if req.view == "stock_only" else "")},
     ]
 
     client = anthropic.Anthropic()
@@ -1837,6 +1877,7 @@ def claude_take(req: TakeRequest):
     take = {
         "symbol": symbol,
         "tier": "deep" if req.deep else "quick",
+        "view": req.view,
         "text": text,
         "model": response.model,
         "position": ({"quantity": req.quantity, "avg_price": req.avg_price}
@@ -1848,8 +1889,9 @@ def claude_take(req: TakeRequest):
     try:
         with conn:
             conn.execute(
-                "INSERT OR REPLACE INTO claude_takes (symbol, tier, stored_at, payload) VALUES (?, ?, ?, ?)",
-                (symbol, take["tier"], stored_at, json.dumps(take)),
+                "INSERT OR REPLACE INTO claude_takes (symbol, tier, view, stored_at, payload) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (symbol, take["tier"], req.view, stored_at, json.dumps(take)),
             )
     finally:
         conn.close()
@@ -1866,14 +1908,18 @@ def claude_takes(symbols: str = Query(..., description="Comma-separated Yahoo sy
     try:
         placeholders = ",".join("?" * len(syms))
         rows = conn.execute(
-            f"SELECT symbol, tier, stored_at, payload FROM claude_takes WHERE symbol IN ({placeholders})",
+            f"SELECT symbol, tier, view, stored_at, payload FROM claude_takes WHERE symbol IN ({placeholders})",
             syms,
         ).fetchall()
     finally:
         conn.close()
+    # symbol -> view -> tier, so the UI shows the take for the view on screen
+    # rather than one written against the other view's numbers.
     out: dict[str, dict] = {}
-    for sym, tier, stored_at, payload in rows:
-        out.setdefault(sym, {})[tier] = {**json.loads(payload), "stored_at": stored_at}
+    for sym, tier, view, stored_at, payload in rows:
+        out.setdefault(sym, {}).setdefault(view, {})[tier] = {
+            **json.loads(payload), "stored_at": stored_at,
+        }
     return {"takes": out}
 
 

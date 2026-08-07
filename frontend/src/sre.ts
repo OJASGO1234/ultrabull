@@ -254,6 +254,8 @@ export async function fetchStoredSignals(symbols: string[]): Promise<Record<stri
 export interface ClaudeTake {
   symbol: string
   tier: 'quick' | 'deep'
+  /** which analysis view this take reasoned from (absent on pre-view takes) */
+  view?: ViewName
   text: string
   model: string
   position: { quantity: number | null; avg_price: number | null } | null
@@ -266,24 +268,30 @@ export interface TakePair {
   deep?: ClaudeTake
 }
 
+/** Stored takes are kept per view — a take written against the market-aware
+ * numbers does not describe the stock-only view and must not be shown for it. */
+export type TakesByView = Partial<Record<ViewName, TakePair>>
+
 /** Ask Claude for a take on this holding. quick = payload-only (seconds);
- * deep = adds server-side web search (can take a minute). */
+ * deep = adds server-side web search (can take a minute). `view` decides which
+ * set of numbers Claude reasons from. */
 export function fetchClaudeTake(
   symbol: string,
-  opts: { quantity?: number | null; avg_price?: number | null; deep?: boolean },
+  opts: { quantity?: number | null; avg_price?: number | null; deep?: boolean; view?: ViewName },
 ): Promise<ClaudeTake> {
   return post('/api/claude/take', {
     symbol,
     quantity: opts.quantity ?? null,
     avg_price: opts.avg_price ?? null,
     deep: opts.deep ?? false,
+    view: opts.view ?? 'market_aware',
   })
 }
 
 /** Read previously stored takes only — instant, never calls Claude. */
-export async function fetchStoredTakes(symbols: string[]): Promise<Record<string, TakePair>> {
+export async function fetchStoredTakes(symbols: string[]): Promise<Record<string, TakesByView>> {
   if (!symbols.length) return {}
-  const resp = await request<{ takes: Record<string, TakePair> }>(
+  const resp = await request<{ takes: Record<string, TakesByView> }>(
     `/api/claude/takes?symbols=${encodeURIComponent(symbols.join(','))}`,
   )
   return resp.takes

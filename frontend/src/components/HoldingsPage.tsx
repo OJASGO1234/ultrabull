@@ -8,6 +8,7 @@ import {
   clearCreds, fetchClaudeTake, fetchGrowwHoldings, fetchServerCreds, fetchSignal, fetchSreHoldings,
   fetchSreNews, fetchStoredSignals, fetchStoredTakes, loadCreds, saveCreds, saveServerCreds, tokenExp,
   type ClaudeTake, type CompactSignal, type HoldingsResponse, type SreHolding, type TakePair,
+  type TakesByView,
 } from '../sre'
 import { fetchHoldDates, fetchXirr, saveHoldDate, type XirrResult } from '../sre'
 import { fetchAnalysis, RANGE_PRESETS, type RangeQuery } from '../api'
@@ -111,12 +112,13 @@ function PositionBlock({ h, s, theme: t }: { h: SreHolding; s: CompactSignal; th
 }
 
 /** On-demand Claude judgment for one holding: quick (payload-only) and deep (web research). */
-function ClaudeTakeSection({ h, pair, busy, error, onAsk }: {
+function ClaudeTakeSection({ h, pair, busy, error, onAsk, view }: {
   h: SreHolding
   pair: TakePair | undefined
   busy: 'quick' | 'deep' | undefined
   error: string | undefined
   onAsk: (deep: boolean) => void
+  view: ViewName
 }) {
   const takes = [pair?.deep, pair?.quick].filter((t): t is ClaudeTake => !!t)
   return (
@@ -140,15 +142,19 @@ function ClaudeTakeSection({ h, pair, busy, error, onAsk }: {
       {error && <p className="detail-warn">Claude take failed: {error}</p>}
       {takes.length === 0 && !busy && !error && (
         <p className="chart-note">
-          No stored take yet. Quick take reads the analysis + your position ({h.quantity != null ? fmt.int(h.quantity) : '?'} @
-          ₹{fmt.price(h.avg_price)}); deep research also checks the web for result dates, estimates and news.
+          No stored take for this view yet. Quick take reads the analysis + your position (
+          {h.quantity != null ? fmt.int(h.quantity) : '?'} @ ₹{fmt.price(h.avg_price)}); deep research also
+          checks the web for result dates, estimates and news. Claude reasons from the{' '}
+          <b>{view === 'stock_only' ? 'stock-only' : 'market-aware'}</b> numbers — takes are stored per view,
+          so switching the toggle shows that view's take rather than re-labelling this one.
         </p>
       )}
       {takes.map((t) => (
         <div key={t.tier} className="take-body">
           <p className="cell-sub">
-            {t.tier === 'deep' ? 'Deep research' : 'Quick take'} · data through {t.as_of ?? '?'} · asked{' '}
-            {t.stored_at.slice(0, 16).replace('T', ' ')}
+            {t.tier === 'deep' ? 'Deep research' : 'Quick take'} ·{' '}
+            {(t.view ?? 'market_aware') === 'stock_only' ? 'stock-only view' : 'market-aware view'} · data
+            through {t.as_of ?? '?'} · asked {t.stored_at.slice(0, 16).replace('T', ' ')}
           </p>
           <div className="chat-md">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.text}</ReactMarkdown>
@@ -202,7 +208,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
   const [signals, setSignals] = useState<Record<string, SignalState>>({})
   const [news, setNews] = useState<Record<string, NewsState>>({})
   const [charts, setCharts] = useState<Record<string, ChartState>>({})
-  const [takes, setTakes] = useState<Record<string, TakePair>>({})
+  const [takes, setTakes] = useState<Record<string, TakesByView>>({})
   const [takeBusy, setTakeBusy] = useState<Record<string, 'quick' | 'deep' | undefined>>({})
   const [takeError, setTakeError] = useState<Record<string, string | undefined>>({})
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -252,14 +258,17 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
     setTakeBusy((prev) => ({ ...prev, [sym]: deep ? 'deep' : 'quick' }))
     setTakeError((prev) => ({ ...prev, [sym]: undefined }))
     try {
-      const take = await fetchClaudeTake(sym, { quantity: h.quantity, avg_price: h.avg_price, deep })
-      setTakes((prev) => ({ ...prev, [sym]: { ...prev[sym], [take.tier]: take } }))
+      const take = await fetchClaudeTake(sym, { quantity: h.quantity, avg_price: h.avg_price, deep, view })
+      setTakes((prev) => ({
+        ...prev,
+        [sym]: { ...prev[sym], [view]: { ...prev[sym]?.[view], [take.tier]: take } },
+      }))
     } catch (err) {
       setTakeError((prev) => ({ ...prev, [sym]: err instanceof Error ? err.message : String(err) }))
     } finally {
       setTakeBusy((prev) => ({ ...prev, [sym]: undefined }))
     }
-  }, [])
+  }, [view])
 
   // history window for Analyse runs — same presets as the analysis tab
   const analyseRange = useCallback((): RangeQuery => {
@@ -934,7 +943,8 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
                             {h.yahoo_symbol && (
                               <ClaudeTakeSection
                                 h={h}
-                                pair={takes[h.yahoo_symbol]}
+                                pair={takes[h.yahoo_symbol]?.[view]}
+                                view={view}
                                 busy={takeBusy[h.yahoo_symbol]}
                                 error={takeError[h.yahoo_symbol]}
                                 onAsk={(deep) => void askClaude(h, deep)}

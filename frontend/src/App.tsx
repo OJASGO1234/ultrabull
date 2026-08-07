@@ -104,7 +104,6 @@ export default function App() {
     setError(null)
     try {
       setData(await fetchAnalysis(s, range, iv))
-      setView('market_aware')   // every new run starts from the supported view
       setActive({ symbol: s, range })
       const url = new URL(window.location.href)
       url.searchParams.set('symbol', s)
@@ -303,6 +302,18 @@ export default function App() {
         </button>
       </form>
 
+      {/* Chosen BEFORE the run, alongside ticker and window — it is an analysis
+          setting, not a result filter. Both views are computed server-side in
+          one pass, so changing it after a run re-renders instantly instead of
+          refetching; the choice made here is what the results land on. */}
+      <MarketContextToggle view={view} onChange={setView} />
+      {interval !== '1d' && (
+        <p className="chart-note">
+          Market context does not apply to intraday runs — the gates and base rates it switches were fit
+          on daily bars, so intraday results are unchanged either way.
+        </p>
+      )}
+
       {error && <div className="error-banner">⚠ {error}</div>}
       {loading && <div className="loading">Downloading data, detecting patterns, running backtest…</div>}
 
@@ -342,7 +353,6 @@ export default function App() {
             </div>
           )}
 
-          {data.views && <MarketContextToggle view={view} onChange={setView} />}
 
           {stockOnly && activeView && (
             <div className="card stock-only-banner">
