@@ -40,7 +40,12 @@ def _size_shares(entry_px: float, atr: float, sl_atr_k: float, cfg: Dict[str, An
     method = _get(cfg, "risk.position_sizing", "atr")
     if method == "fixed_cash":
         cash = float(_get(cfg, "risk.fixed_cash_per_trade", 50_000))
-        return max(0.0, cash) / max(1e-9, entry_px)
+        shares = max(0.0, cash) / max(1e-9, entry_px)
+        # cap notional at available equity, same protection the "atr" branch below
+        # already has -- fixed_cash_per_trade misconfigured relative to capital
+        # must not be able to size a position beyond the account's own equity.
+        shares = min(shares, equity / max(1e-9, entry_px))
+        return max(0.0, shares)
     risk_cap = equity * float(_get(cfg, "risk.max_risk_per_trade", 0.005))
     stop_dist = max(1e-8, atr * max(1e-9, sl_atr_k))
     shares = risk_cap / stop_dist
@@ -128,6 +133,17 @@ def simulate(
         # 1) exits
         still_open = []
         for pos in open_positions:
+            # A delayed-entry position is already sitting in open_positions before
+            # its stated entry_bar is reached (it is appended in the same loop
+            # iteration the signal fires, entry_bar = t + delay_bars). SL/TP/trail/
+            # time-stop must never be evaluated against bars before the position
+            # has actually been filled -- otherwise a position can be exited on a
+            # bar strictly earlier than its own entry_bar (confirmed possible for
+            # delay_bars >= 2 in the sim-engine audit).
+            if t < pos["entry_bar"]:
+                still_open.append(pos)
+                continue
+
             side = pos["side"]
             trail_k = pos["trail_atr"]
 
@@ -245,6 +261,16 @@ def simulate(
                 raw_px = _entry_price(open_, close, entry_bar, s_enter)
                 side = s["side"]
                 atr_e = float(atr[entry_bar]) if len(atr) else 0.0
+
+                # An invalid ATR (NaN, or negative -- ATR should never be negative
+                # since it is built from non-negative |high-low|-type terms, but
+                # this is not otherwise checked upstream) cannot produce a sane
+                # position size or SL/TP: a NaN ATR yields NaN sl/tp that can never
+                # be hit (the position rides unmanaged), and a negative ATR inverts
+                # which side of entry the SL/TP land on. Reject the signal instead
+                # of opening an unmanaged/inverted position.
+                if not np.isfinite(atr_e) or atr_e < 0:
+                    continue
 
                 # position sizing
                 shares = _size_shares(raw_px, atr_e, float(s["sl_atr"]), cfg, equity)
