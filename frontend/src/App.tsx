@@ -21,6 +21,7 @@ import { PaperTradeCard } from './components/PaperTradeCard'
 import { ChatSidebar } from './components/ChatSidebar'
 import { FundamentalsCard } from './components/FundamentalsCard'
 import { KeyIndicators } from './components/KeyIndicators'
+import { MomentumCard } from './components/MomentumCard'
 import { MarketContextToggle } from './components/MarketContextToggle'
 import { HoldingsPage } from './components/HoldingsPage'
 import { HealthPage } from './components/HealthPage'
@@ -387,6 +388,8 @@ export default function App() {
           {advice && <AdviceCard advice={advice} outlook={outlook} theme={theme} />}
 
           {keyIndicators && <KeyIndicators ki={keyIndicators} theme={theme} />}
+
+          {data.momentum && <MomentumCard momentum={data.momentum} theme={theme} />}
 
           <PaperTradeCard
             symbol={data.symbol}

@@ -51,6 +51,12 @@ from idea_lab import evaluate_rule, backtest_strategy, FEATURES as IDEA_FEATURES
 
 IDEA_CACHE_DIR = os.path.join(ROOT, "data_cache")
 from vbt_to_pd_ind import build_ind_df_from_vbt, extract_symbol_df
+from momentum import (
+    LOOKBACK_BARS as MOMENTUM_LOOKBACK_BARS,
+    LOOKBACK_MONTHS as MOMENTUM_LOOKBACK_MONTHS,
+    compute_multi_period_momentum,
+    technical_confirmation as momentum_technical_confirmation,
+)
 from patterns.config import CFG
 from patterns.pipeline import run_all_patterns
 from patterns.postprocess import enrich_detections, warmup_cutoff, summarize_signals
@@ -60,12 +66,14 @@ from rules.signals import compile_signals
 from sim.engine import simulate
 from sim.metrics import summarize, by_tag, audit_exits
 from pipeline import cfg as PIPELINE_BASE_CFG
+from stock_analysis import build_stock_analysis
 
 from .sre import router as sre_router
 from .auth import make_token, verify_token, verify_user
 from .live import router as live_router, groww_router
 from .paper import router as paper_router
 from .deals import router as deals_router
+from .momentum_paper import router as momentum_paper_router
 
 app = FastAPI(title="Ultrabull API")
 
@@ -81,6 +89,7 @@ app.include_router(live_router)
 app.include_router(groww_router)
 app.include_router(paper_router)
 app.include_router(deals_router)
+app.include_router(momentum_paper_router)
 
 
 @app.on_event("startup")
@@ -472,6 +481,22 @@ def _context_snapshot(symbol: str, ctx: pd.DataFrame | None, ind_df: pd.DataFram
 
 def run_analysis(symbol: str, years: float, start: str | None = None, end: str | None = None) -> dict:
     df = load_data(symbol, years, start=start, end=end)
+    # yfinance can return an in-progress session as a row with NaN OHLC (the
+    # bar hasn't settled yet) while still reporting partial volume -- trim
+    # that unsettled tail here, at the single point everything downstream
+    # (indicators, patterns, advice, outlook, momentum) branches from, so
+    # every one of those calculations keeps its existing assumption that
+    # `close` is always a real number. Pre-existing, unrelated to the
+    # momentum strategy added below; without this, ANY symbol's analysis
+    # (not just momentum) 500s on a NaN reaching JSON serialization
+    # (e.g. core/advice.py's plan levels) whenever the fetch lands mid-bar.
+    close_col = df["close"] if len(df) else None
+    if isinstance(close_col, pd.DataFrame):  # MultiIndex columns (yfinance, single symbol) -> squeeze
+        close_col = close_col.iloc[:, 0]
+    if close_col is not None and close_col.isna().any():
+        last_valid = close_col.last_valid_index()
+        if last_valid is not None:
+            df = df.loc[:last_valid]
     ind = compute_indicators(df)
 
     # context/index loaders fetch from today backwards — make sure they reach
@@ -867,25 +892,101 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
         },
     }
 
+    indicators_json = {
+        "ma20": _series_points(ind_df["MA20"]),
+        "ma50": _series_points(ind_df["MA50"]),
+        "bb_upper": _series_points(ind_df["BB_upper"]),
+        "bb_lower": _series_points(ind_df["BB_lower"]),
+        "rsi": _series_points(ind_df["RSI"]),
+        "atr": _series_points(ind_df["ATR"]),
+        "macd": _series_points(ind_df["MACD"]),
+        "macd_signal": _series_points(ind_df["MACD_signal"]),
+        "macd_hist": _series_points(macd_hist),
+        "adx": _series_points(ind_df["ADX"]) if "ADX" in ind_df.columns else [],
+    }
+    last_date = _date(df_ohlcv.index[-1])
+
+    # Momentum / relative-strength diagnostics (new strategy, see
+    # core/momentum.py + core/strategies/momentum_strategy.py). This is a
+    # per-symbol DIAGNOSTIC panel only -- absolute/relative momentum at each
+    # of 3M/6M/9M/12M plus the same technical-confirmation flags the
+    # strategy trades on -- not a cross-sectional rank (ranking requires
+    # comparing against the whole universe on the same date; see
+    # GET /api/momentum/screen for that). Reuses the SAME NIFTY series
+    # `ctx` above already fetched (market_context's in-memory index cache),
+    # so this costs no extra network call.
+    try:
+        bench_close = _load_index_close(MARKET_INDEX, max(years, 1.0) + 0.5)
+        mom_df = compute_multi_period_momentum(df_ohlcv["Close"], bench_close)
+        mom_tech = momentum_technical_confirmation(df_ohlcv["Close"], ind_df)
+        # yfinance can return TODAY's row with a NaN close for a not-yet-settled
+        # session (see stock_explorer.load_data); anchor on the last row with a
+        # real close so the panel doesn't go blank for the whole trading day.
+        valid_idx = df_ohlcv["Close"].last_valid_index()
+        mom_row = mom_df.loc[valid_idx] if valid_idx is not None else mom_df.iloc[-1]
+        tech_row = mom_tech.loc[valid_idx] if valid_idx is not None else mom_tech.iloc[-1]
+        momentum_json = {
+            "benchmark": MARKET_INDEX,
+            "as_of": _date(valid_idx) if valid_idx is not None else last_date,
+            "lookbacks": {
+                label: {
+                    "months": MOMENTUM_LOOKBACK_MONTHS[label],
+                    "bars": MOMENTUM_LOOKBACK_BARS[label],
+                    "absolute_momentum": _num(mom_row.get(f"momentum_{label}")),
+                    "relative_momentum": _num(mom_row.get(f"relative_momentum_{label}")),
+                }
+                for label in MOMENTUM_LOOKBACK_BARS
+            },
+            "technical_confirmation": {
+                "close_above_ma20": bool(tech_row["close_above_ma20"]),
+                "close_above_ma50": bool(tech_row["close_above_ma50"]),
+                "ma20_above_ma50": bool(tech_row["ma20_above_ma50"]),
+                "confirmed": bool(tech_row["confirmed"]),
+            },
+            "note": (
+                "Per-symbol diagnostic values, not a cross-sectional rank or a "
+                "trading recommendation by themselves. The momentum strategy's "
+                "backtested track record (if any) is in "
+                "core/momentum_experiment_results.csv, produced by "
+                "core/research_momentum_experiment.py -- it has not been "
+                "validated as profitable and should not be read as advice."
+            ),
+        }
+    except Exception:
+        momentum_json = None
+
+    # Unified, typed view of everything above for the AI recommendation layer
+    # (and any other future consumer) to read from one object instead of ~10
+    # loose locals. Purely additive: every key below this point already
+    # existed before this field was added. See core/stock_analysis.py --
+    # thin adapter only, computes nothing new.
+    try:
+        stock_analysis_obj = build_stock_analysis(
+            symbol=symbol,
+            as_of=last_date,
+            fundamentals_json=fundamentals_json,
+            indicators_json=indicators_json,
+            key_indicators_json=key_indicators_json,
+            detections_json=detections_json,
+            context_json=context_json,
+            signals_json=signals_json,
+            advice_json=advice_json,
+            outlook_json=outlook_json,
+            levels_json=levels_json,
+            metrics_json=metrics_json,
+        )
+        stock_analysis_json = stock_analysis_obj.to_dict()
+    except Exception:
+        stock_analysis_json = None
+
     return {
         "views": views_json,
         "symbol": symbol,
         "years": years,
         "bars": len(df_ohlcv),
-        "last_date": _date(df_ohlcv.index[-1]),
+        "last_date": last_date,
         "ohlcv": _ohlcv_rows(df_ohlcv),
-        "indicators": {
-            "ma20": _series_points(ind_df["MA20"]),
-            "ma50": _series_points(ind_df["MA50"]),
-            "bb_upper": _series_points(ind_df["BB_upper"]),
-            "bb_lower": _series_points(ind_df["BB_lower"]),
-            "rsi": _series_points(ind_df["RSI"]),
-            "atr": _series_points(ind_df["ATR"]),
-            "macd": _series_points(ind_df["MACD"]),
-            "macd_signal": _series_points(ind_df["MACD_signal"]),
-            "macd_hist": _series_points(macd_hist),
-            "adx": _series_points(ind_df["ADX"]) if "ADX" in ind_df.columns else [],
-        },
+        "indicators": indicators_json,
         "events": events_json,
         "context": context_json,
         "timing": timing_json,
@@ -905,6 +1006,8 @@ def run_analysis(symbol: str, years: float, start: str | None = None, end: str |
         "audit": audit_json,
         "signal_summary": signal_summary_json,
         "summary_md": summary_md,
+        "stock_analysis": stock_analysis_json,
+        "momentum": momentum_json,
     }
 
 
@@ -1950,6 +2053,90 @@ def claude_takes(symbols: str = Query(..., description="Comma-separated Yahoo sy
             **json.loads(payload), "stored_at": stored_at,
         }
     return {"takes": out}
+
+
+# ---------------------------------------------------------------------------
+# Momentum strategy: cross-sectional screener (Phase 9 API integration).
+#
+# Unlike /api/analyze/{symbol}'s per-symbol "momentum" diagnostics above,
+# ranking requires comparing every candidate against the whole universe on
+# the SAME date -- that's what core/strategies/momentum_strategy.py's
+# cross_sectional_rank/select_candidates do, reused here unmodified. This
+# endpoint is a LIVE, today-anchored ranking, not a backtest; the backtested
+# track record lives in core/momentum_experiment_results.csv (see
+# core/research_momentum_experiment.py) and is not reproduced here.
+# ---------------------------------------------------------------------------
+from strategies.momentum_strategy import (  # noqa: E402
+    MomentumConfig as _MomentumConfig,
+    screen_universe_now as _mom_screen_universe_now,
+)
+from event_study import UNIVERSE as _MOMENTUM_UNIVERSE  # noqa: E402
+
+_MOMENTUM_CACHE_DIR = os.path.join(ROOT, "data_cache", "momentum")
+_momentum_screen_cache: dict[tuple, tuple[float, dict]] = {}
+_MOMENTUM_SCREEN_TTL_SECONDS = 30 * 60  # a 3-12 month momentum figure barely moves within a session
+
+
+@app.get("/api/momentum/screen")
+def momentum_screen(
+    lookback: str = Query("6M", description="One of: " + ", ".join(MOMENTUM_LOOKBACK_BARS)),
+    top_n: int = Query(10, ge=1, le=50),
+    years: float = Query(2.0, ge=0.5, le=6.0),
+    use_relative: bool = Query(True, description="Rank by relative momentum vs NIFTY (else absolute momentum)"),
+    use_technical: bool = Query(True, description="Require MA20/MA50 trend confirmation"),
+    use_market_regime: bool = Query(True, description="Require NIFTY in an MA20>MA50 uptrend"),
+    symbols: str | None = Query(None, description="Comma-separated override of the default universe"),
+):
+    if lookback not in MOMENTUM_LOOKBACK_BARS:
+        raise HTTPException(400, f"lookback must be one of {list(MOMENTUM_LOOKBACK_BARS)}")
+    universe = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else _MOMENTUM_UNIVERSE
+
+    cache_key = (lookback, top_n, years, use_relative, use_technical, use_market_regime, tuple(sorted(universe)))
+    now = time.time()
+    cached = _momentum_screen_cache.get(cache_key)
+    if cached and (now - cached[0]) < _MOMENTUM_SCREEN_TTL_SECONDS:
+        return {**cached[1], "cached": True}
+
+    cfg = _MomentumConfig(
+        lookback_label=lookback, top_n=top_n,
+        use_relative_momentum=use_relative,
+        use_technical_confirmation=use_technical,
+        use_market_regime=use_market_regime,
+    )
+    screen = _mom_screen_universe_now(universe, years, cfg, cache_dir=_MOMENTUM_CACHE_DIR)
+    if screen["n_symbols"] == 0:
+        raise HTTPException(502, "Could not load data for any symbol in the requested universe")
+    if screen["as_of"] is None:
+        raise HTTPException(502, "No valid momentum data for the requested universe/lookback")
+
+    rows = [{
+        **row,
+        "absolute_momentum": _num(row["absolute_momentum"]),
+        "relative_momentum": _num(row["relative_momentum"]),
+        "close": _num(row["close"]),
+        "entry_est": _num(row["entry_est"]),
+        "sl_est": _num(row["sl_est"]),
+        "tp_est": _num(row["tp_est"]),
+    } for row in screen["rows"]]
+
+    result = {
+        "lookback": lookback,
+        "lookback_bars": cfg.lookback_bars,
+        "as_of": _date(screen["as_of"]),
+        "n_symbols": screen["n_symbols"],
+        "config": {
+            "top_n": top_n, "use_relative_momentum": use_relative,
+            "use_technical_confirmation": use_technical, "use_market_regime": use_market_regime,
+        },
+        "ranked": rows,
+        "note": (
+            "Live ranking, not a backtest. Not validated as profitable -- see "
+            "core/momentum_experiment_results.csv for backtested evidence at "
+            "this lookback before treating any row as a recommendation."
+        ),
+    }
+    _momentum_screen_cache[cache_key] = (now, result)
+    return {**result, "cached": False}
 
 
 INTRADAY_INTERVALS = {"5m", "15m", "30m", "60m", "90m"}

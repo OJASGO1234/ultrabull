@@ -312,6 +312,58 @@ export interface Fundamentals {
   }
 }
 
+export interface MomentumLookback {
+  months: number
+  bars: number
+  absolute_momentum: number | null
+  relative_momentum: number | null
+}
+
+export interface Momentum {
+  benchmark: string
+  as_of: string
+  lookbacks: Record<'3M' | '6M' | '9M' | '12M', MomentumLookback>
+  technical_confirmation: {
+    close_above_ma20: boolean
+    close_above_ma50: boolean
+    ma20_above_ma50: boolean
+    confirmed: boolean
+  }
+  note: string
+}
+
+export interface MomentumScreenRow {
+  symbol: string
+  rank: number
+  absolute_momentum: number | null
+  relative_momentum: number | null
+  technical_confirmed: boolean
+  selected: boolean
+  close: number | null
+  signal: 'long' | null
+  entry_est: number | null
+  sl_est: number | null
+  tp_est: number | null
+  sl_atr?: number
+  tp_atr?: number
+}
+
+export interface MomentumScreenResponse {
+  lookback: string
+  lookback_bars: number
+  as_of: string | null
+  n_symbols: number
+  config: {
+    top_n: number
+    use_relative_momentum: boolean
+    use_technical_confirmation: boolean
+    use_market_regime: boolean
+  }
+  ranked: MomentumScreenRow[]
+  note: string
+  cached: boolean
+}
+
 export interface AnalysisResponse {
   symbol: string
   years: number
@@ -354,5 +406,6 @@ export interface AnalysisResponse {
   audit: Audit
   signal_summary: SignalSummary
   summary_md: string
+  momentum: Momentum | null
   cached?: boolean
 }

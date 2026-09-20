@@ -1,5 +1,5 @@
 import { authFetch } from './auth'
-import type { AnalysisResponse } from './types'
+import type { AnalysisResponse, MomentumScreenResponse } from './types'
 
 export interface RangeQuery {
   years?: number
@@ -33,6 +33,25 @@ export async function fetchAnalysis(symbol: string, range: RangeQuery, interval 
   const q = rangeToQuery(range)
   if (interval && interval !== '1d') q.set('interval', interval)
   const res = await authFetch(`/api/analyze/${encodeURIComponent(symbol)}?${q}`)
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch {
+      // non-JSON error body; keep the generic message
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
+export async function fetchMomentumScreen(
+  lookback: '3M' | '6M' | '9M' | '12M',
+  opts: { topN?: number; years?: number } = {},
+): Promise<MomentumScreenResponse> {
+  const q = new URLSearchParams({ lookback, top_n: String(opts.topN ?? 10), years: String(opts.years ?? 2) })
+  const res = await authFetch(`/api/momentum/screen?${q}`)
   if (!res.ok) {
     let detail = `Request failed (${res.status})`
     try {
