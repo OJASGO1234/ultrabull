@@ -510,6 +510,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
             onChange={(e) => setClientId(e.target.value)}
             placeholder="Client ID, e.g. A790195"
             aria-label="SRE client ID"
+            autoComplete="off"
             spellCheck={false}
           />
           <input
@@ -518,6 +519,7 @@ export function HoldingsPage({ theme: t, onOpenAnalysis, view, onViewChange }: {
             placeholder="Bearer token (eyJ…)"
             aria-label="SRE bearer token"
             type="password"
+            autoComplete="off"
             spellCheck={false}
             className="sre-token"
           />

@@ -1,0 +1,81 @@
+/* ==========================================================================
+   UltraBull design tokens -- the ONE place colours, type, spacing, radii,
+   shadows and motion are defined. Everything else (index.css, ui.css,
+   paper.css, the chart theme in theme.ts) reads from here.
+
+   Colours are mirrored for canvas charts in src/theme.ts -- change both.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* ---- surfaces: darkest -> lightest layer ---- */
+  --bg: #0a0c0d;
+  --surface-1: #111416; /* cards */
+  --surface-2: #161a1d; /* raised: inputs, tiles */
+  --surface-3: #1d2226; /* hover / pressed */
+
+  /* ---- text ---- */
+  --text-primary: #f4f6f5;
+  --text-secondary: #aab3b0;
+  --muted: #7b8683;
+
+  /* ---- lines ---- */
+  --grid: #1c2124;
+  --baseline: #2a3135;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ---- brand + status ---- */
+  --accent: #2dd4bf; /* teal: primary */
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --on-accent: #04201c; /* text that sits ON a teal/lime/coral fill */
+  --good: #a3e635; /* lime: gains */
+  --good-text: #a3e635;
+  --critical: #f87171; /* coral: losses, errors */
+  --warning: #fbbf24; /* amber */
+
+  /* ---- legacy alias (index.css still says --page) ---- */
+  --page: var(--bg);
+
+  /* ---- spacing scale (4px base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* ---- radii ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* ---- shadows (layered: tight contact + wide soft) ---- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.22);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.45), 0 14px 32px rgba(0, 0, 0, 0.34);
+  --glow: 0 0 0 1px rgba(45, 212, 191, 0.35), 0 0 22px rgba(45, 212, 191, 0.12);
+
+  /* ---- typography ---- */
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', 'Roboto Mono', Consolas, monospace;
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 420ms;
+}
+
+/* Respect the OS "reduce motion" setting everywhere: animations/transitions
+   collapse to an instant change (state changes still happen, just not animated). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

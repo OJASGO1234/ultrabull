@@ -18,3 +18,5 @@ yfinance
 lxml
 anthropic
 anthropic
+fastembed
+pypdf

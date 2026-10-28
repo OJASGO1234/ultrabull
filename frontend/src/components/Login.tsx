@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { login } from '../auth'
+import { BrandMark, Button } from './ui'
 
 export function Login({ onSuccess }: { onSuccess: (username: string) => void }) {
   const [username, setUsername] = useState('')
@@ -25,7 +26,7 @@ export function Login({ onSuccess }: { onSuccess: (username: string) => void }) 
   return (
     <div className="login-wrap">
       <form className="card login-card" onSubmit={onSubmit}>
-        <h1>Ultrabull</h1>
+        <div className="brand"><BrandMark /><h1>Ultrabull</h1></div>
         <p className="chart-note">Sign in to continue.</p>
         <input
           value={username}
@@ -45,9 +46,9 @@ export function Login({ onSuccess }: { onSuccess: (username: string) => void }) 
           autoComplete="current-password"
         />
         {error && <p className="detail-warn">{error}</p>}
-        <button type="submit" disabled={busy || !username.trim() || !password}>
+        <Button type="submit" loading={busy} disabled={!username.trim() || !password}>
           {busy ? 'Signing in…' : 'Sign in'}
-        </button>
+        </Button>
       </form>
     </div>
   )

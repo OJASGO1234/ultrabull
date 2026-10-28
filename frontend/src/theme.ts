@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react'
-
-/** Chart color tokens, from the validated reference palette (dataviz skill).
- * Marks wear series colors; text always wears ink tokens. */
+/** Chart/inline colour tokens (JavaScript side of the design system).
+ *
+ * Colours reach the screen by two routes: DOM elements read the CSS variables in
+ * styles/tokens.css; canvas charts (lightweight-charts) and inline
+ * `style={{ color }}` props read the values below -- CSS variables can't reach
+ * into a <canvas>. Each value notes its matching CSS variable. Change both.
+ *
+ * The app is a single dark theme, so `useTheme()` just returns it. The hook
+ * (and `Theme` type) are kept so every component's `theme` prop still works.
+ * Marks wear series colours; text always wears ink tokens.
+ */
 export interface Theme {
   mode: 'light' | 'dark'
   surface: string
@@ -36,75 +43,40 @@ export interface Theme {
   volDown: string
 }
 
-const light: Theme = {
-  mode: 'light',
-  surface: '#fcfcfb',
-  page: '#f9f9f7',
-  textPrimary: '#0b0b0b',
-  textSecondary: '#52514e',
-  muted: '#898781',
-  grid: '#e1e0d9',
-  baseline: '#c3c2b7',
-  border: 'rgba(11,11,11,0.10)',
-  blue: '#2a78d6',
-  green: '#008300',
-  magenta: '#e87ba4',
-  yellow: '#eda100',
-  aqua: '#1baf7a',
-  orange: '#eb6834',
-  violet: '#4a3aa7',
-  red: '#e34948',
-  good: '#0ca30c',
-  warning: '#fab219',
-  critical: '#d03b3b',
-  deltaUpText: '#006300',
-  deltaDownText: '#d03b3b',
-  areaWash: 'rgba(42,120,214,0.10)',
-  histUp: 'rgba(12,163,12,0.45)',
-  histDown: 'rgba(208,59,59,0.45)',
-  volUp: 'rgba(12,163,12,0.35)',
-  volDown: 'rgba(208,59,59,0.35)',
-}
-
-const dark: Theme = {
+export const darkTheme: Theme = {
   mode: 'dark',
-  surface: '#1a1a19',
-  page: '#0d0d0d',
-  textPrimary: '#ffffff',
-  textSecondary: '#c3c2b7',
-  muted: '#898781',
-  grid: '#2c2c2a',
-  baseline: '#383835',
-  border: 'rgba(255,255,255,0.10)',
-  blue: '#3987e5',
-  green: '#008300',
-  magenta: '#d55181',
-  yellow: '#c98500',
-  aqua: '#199e70',
-  orange: '#d95926',
-  violet: '#9085e9',
-  red: '#e66767',
-  good: '#0ca30c',
-  warning: '#fab219',
-  critical: '#d03b3b',
-  deltaUpText: '#0ca30c',
-  deltaDownText: '#e66767',
-  areaWash: 'rgba(57,135,229,0.10)',
-  histUp: 'rgba(12,163,12,0.45)',
-  histDown: 'rgba(208,59,59,0.45)',
-  volUp: 'rgba(12,163,12,0.35)',
-  volDown: 'rgba(208,59,59,0.35)',
+  surface: '#111416', // --surface-1
+  page: '#0a0c0d', // --bg
+  textPrimary: '#f4f6f5', // --text-primary
+  textSecondary: '#aab3b0', // --text-secondary
+  muted: '#7b8683', // --muted
+  grid: '#1c2124', // --grid
+  baseline: '#2a3135', // --baseline
+  border: 'rgba(255,255,255,0.07)', // --border
+  // categorical slots -- teal leads, as the primary accent
+  blue: '#2dd4bf', // teal (--accent): primary series, BUY labels
+  green: '#a3e635', // lime (--good)
+  magenta: '#e879a9',
+  yellow: '#fbbf24', // amber (--warning)
+  aqua: '#60a5fa', // sky blue: kept distinct from teal
+  orange: '#fb923c', // SELL labels
+  violet: '#a78bfa',
+  red: '#f87171', // coral (--critical)
+  // status
+  good: '#a3e635',
+  warning: '#fbbf24',
+  critical: '#f87171',
+  // delta text: gains lime, losses coral
+  deltaUpText: '#a3e635',
+  deltaDownText: '#f87171',
+  // derived washes (translucent versions of the accent / status colours)
+  areaWash: 'rgba(45,212,191,0.14)',
+  histUp: 'rgba(163,230,53,0.45)',
+  histDown: 'rgba(248,113,113,0.45)',
+  volUp: 'rgba(163,230,53,0.35)',
+  volDown: 'rgba(248,113,113,0.35)',
 }
 
 export function useTheme(): Theme {
-  const [mode, setMode] = useState<'light' | 'dark'>(() =>
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-  )
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = (e: MediaQueryListEvent) => setMode(e.matches ? 'dark' : 'light')
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return mode === 'dark' ? dark : light
+  return darkTheme
 }

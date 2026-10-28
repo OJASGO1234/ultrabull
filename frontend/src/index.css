@@ -1,39 +1,5 @@
-/* Tokens from the reference dataviz palette; charts read the same values via theme.ts */
-:root {
-  color-scheme: light;
-  --surface-1: #fcfcfb;
-  --page: #f9f9f7;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --muted: #898781;
-  --grid: #e1e0d9;
-  --baseline: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --accent: #2a78d6;
-  --good: #0ca30c;
-  --good-text: #006300;
-  --critical: #d03b3b;
-  --warning: #fab219;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --surface-1: #1a1a19;
-    --page: #0d0d0d;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
-    --baseline: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --accent: #3987e5;
-    --good: #0ca30c;
-    --good-text: #0ca30c;
-    --critical: #e66767;
-    --warning: #fab219;
-  }
-}
+/* Design tokens (colours, spacing, radii, shadows, motion) live in styles/tokens.css.
+   Shared reusable component styles live in styles/ui.css. */
 
 * {
   box-sizing: border-box;
@@ -41,11 +7,15 @@
 
 body {
   margin: 0;
-  background: var(--page);
+  background:
+    radial-gradient(1100px 460px at 12% -10%, rgba(45, 212, 191, 0.07), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 .page {
@@ -57,7 +27,8 @@ body {
 .page-head h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
@@ -79,10 +50,10 @@ body {
 
 .controls input,
 .controls select {
-  background: var(--surface-1);
+  background: var(--surface-2);
   color: var(--text-primary);
   border: 1px solid var(--baseline);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
   font: inherit;
 }
@@ -95,7 +66,7 @@ body {
 
 .controls button {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 8px 18px;
@@ -111,9 +82,9 @@ body {
 
 .error-banner {
   background: color-mix(in srgb, var(--critical) 12%, var(--surface-1));
-  border: 1px solid var(--critical);
+  border: 1px solid color-mix(in srgb, var(--critical) 60%, transparent);
   color: var(--text-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 16px;
 }
@@ -127,7 +98,7 @@ body {
 .results {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .run-head {
@@ -157,21 +128,35 @@ body {
 }
 
 .tile {
-  background: var(--surface-1);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-1);
 }
 
 .tile-label {
-  color: var(--text-secondary);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .tile-value {
-  font-size: 20px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
   font-weight: 600;
-  margin-top: 2px;
+  letter-spacing: -0.01em;
+  margin-top: 4px;
 }
 
 .tile-note {
@@ -197,10 +182,17 @@ body {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+
+.chip:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .chip-on {
-  background: var(--surface-1);
+  background: var(--accent-soft);
   color: var(--text-primary);
   border-color: var(--accent);
 }
@@ -244,7 +236,7 @@ body {
   bottom: 20px;
   z-index: 60;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 999px;
   padding: 12px 18px;
@@ -330,7 +322,7 @@ body {
 .chat-user {
   align-self: flex-end;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .chat-assistant {
@@ -462,7 +454,7 @@ body {
 
 .chat-input button {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 0 16px;
@@ -478,16 +470,25 @@ body {
 
 /* Cards */
 .card {
-  background: var(--surface-1);
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface-1) 90px);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px 16px;
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 18px;
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-2);
 }
 
 .card h2 {
   margin: 0 0 8px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .card-head {
@@ -582,19 +583,31 @@ table {
 th,
 td {
   text-align: left;
-  padding: 6px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--grid);
   white-space: nowrap;
 }
 
 th {
-  color: var(--text-secondary);
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+td {
+  transition: background var(--dur-fast) var(--ease);
 }
 
 td.num,
 th.num {
   text-align: right;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -652,7 +665,7 @@ tbody tr:last-child td {
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .dir-bullish {
@@ -683,25 +696,40 @@ tbody tr:last-child td {
 .tabs {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 14px;
+  padding: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .tab {
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-1);
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
 
-.tab-on {
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.tab-on,
+.tab-on:hover {
   background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
+  box-shadow: 0 0 18px rgba(45, 212, 191, 0.25);
 }
 
 /* SRE holdings */
@@ -824,7 +852,7 @@ tbody tr:last-child td {
   border-radius: 8px;
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
 }
 
@@ -856,6 +884,15 @@ tbody tr:last-child td {
   background: transparent;
   color: var(--accent);
   cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.btn-mini:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn-mini:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .btn-mini:disabled {
@@ -965,7 +1002,7 @@ tbody tr:last-child td {
 
 .login-card button {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 9px 12px;
@@ -993,6 +1030,7 @@ tbody tr:last-child td {
   height: 7px;
   border-radius: 50%;
   background: var(--good);
+  box-shadow: 0 0 8px var(--good);
   animation: live-pulse 2s ease-in-out infinite;
   vertical-align: 1px;
 }
@@ -1218,7 +1256,7 @@ tbody tr:last-child td {
   transition: width 0.5s ease;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: var(--on-accent);
 }
 .of-fill span { padding: 0 8px; }
 .of-buy { background: color-mix(in srgb, var(--good) 78%, transparent); justify-content: flex-start; }
@@ -1279,12 +1317,19 @@ tbody tr:last-child td {
   background: var(--surface-1);
   color: var(--text-secondary);
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.view-tab:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .view-tab-on {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .view-switch-note {
@@ -1336,4 +1381,10 @@ tbody tr:last-child td {
 .factor-tag {
   color: var(--muted);
   font-style: italic;
+}
+
+/* Bearer token is masked; don't uppercase it like the ticker inputs. */
+.sre-connect .sre-token { text-transform: none; }
+@media (max-width: 600px) {
+  .sre-connect .sre-token { min-width: 0; flex-basis: 100%; }
 }

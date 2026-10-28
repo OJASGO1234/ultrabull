@@ -14,7 +14,7 @@ export function makeChart(el: HTMLElement, t: Theme, height: number): IChartApi 
       background: { color: 'transparent' },
       textColor: t.muted,
       fontSize: 11,
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+      fontFamily: '"Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif',
     },
     grid: {
       vertLines: { color: t.grid },

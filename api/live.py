@@ -1,14 +1,17 @@
 """Live quotes via the Groww trading API (data subscription).
 
-Token management is fully hands-off: access tokens are minted from the API
-key + TOTP secret in .env (groww_api_key / groww_totp_gen) and rebuilt on
-auth failure. Quotes come from the two batch endpoints (get_ltp + get_ohlc =
+Auth: access tokens are minted from the TOTP token + TOTP secret
+(groww_totp_token / groww_totp_secret) and rebuilt on auth failure; a
+pre-generated groww_access_token is only a fallback, and only while unexpired. Quotes come from the two batch endpoints (get_ltp + get_ohlc =
 2 upstream calls regardless of symbol count) behind a ~3s micro-cache so a
 page full of pollers doesn't hammer Groww's rate limits.
 """
 from __future__ import annotations
 
 import asyncio
+import base64
+import json
+import logging
 import os
 import threading
 import time
@@ -23,6 +26,7 @@ from .sre import yahoo_symbol as _to_yahoo
 router = APIRouter(prefix="/api/live", tags=["live"])
 groww_router = APIRouter(prefix="/api/groww", tags=["groww"])
 
+log = logging.getLogger(__name__)
 IST = ZoneInfo("Asia/Kolkata")
 CACHE_TTL = 3.0
 
@@ -32,17 +36,127 @@ _client_born = 0.0
 _cache: dict[str, tuple[float, dict]] = {}
 
 
+def _env(name: str) -> str:
+    return (os.getenv(name) or "").strip()
+
+
+def _is_jwt(v: str) -> bool:
+    return v.startswith("eyJ") and v.count(".") == 2
+
+
+def _is_base32(v: str) -> bool:
+    try:
+        base64.b32decode(v.replace(" ", "").upper() + "=" * (-len(v.replace(" ", "")) % 8))
+        return bool(v)
+    except Exception:
+        return False
+
+
+def _token_expired(token: str) -> bool:
+    """True only if `token` is a JWT whose exp claim is in the past (local decode, no network)."""
+    try:
+        payload = token.split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+        return float(claims["exp"]) <= time.time()
+    except Exception:
+        return False  # opaque/unknown format: let Groww decide
+
+
+def _totp_credentials() -> tuple[str, str] | None:
+    """
+    Read Groww TOTP credentials from the existing .env variables.
+
+    groww_totp_gen:
+        TOTP token (JWT)
+    groww_totp_secret:
+        Base32 TOTP secret
+    """
+    totp_token = _env("groww_totp_token")
+    totp_secret = _env("groww_totp_secret")
+    legacy = _env("groww_totp_gen")
+
+    # Backward compatibility with the existing .env layout.
+    if not totp_token and _is_jwt(legacy):
+        totp_token = legacy
+
+    # If the TOTP token has a dedicated variable, use it.
+    # Otherwise, use the existing groww_totp_gen variable.
+    if totp_token and totp_secret:
+        return totp_token, totp_secret
+
+    # Support the legacy API-key + TOTP-secret arrangement
+    # only when groww_totp_gen is actually a Base32 secret.
+    if not totp_secret and _is_base32(legacy) and not _is_jwt(legacy):
+        totp_secret = legacy
+        totp_token = _env("groww_api_key")
+
+    if totp_token and totp_secret:
+        return totp_token, totp_secret
+
+    return None
+
+
 def _new_client():
     from growwapi import GrowwAPI
     import pyotp
 
-    api_key = os.getenv("groww_api_key")
-    totp_gen = os.getenv("groww_totp_gen")
-    if not api_key or not totp_gen:
-        raise HTTPException(status_code=503, detail="Groww API keys not configured (groww_api_key / groww_totp_gen)")
-    token = GrowwAPI.get_access_token(api_key, pyotp.TOTP(totp_gen).now())
-    return GrowwAPI(token)
+    # Always try TOTP first, so an expired access token
+    # does not prevent authentication.
+    creds = _totp_credentials()
 
+    if creds:
+        totp_token, totp_secret = creds
+
+        try:
+            totp_code = pyotp.TOTP(totp_secret).now()
+
+            access_token = GrowwAPI.get_access_token(
+                totp_token,
+                totp_code,
+            )
+
+            if not access_token:
+                raise RuntimeError("Groww returned an empty access token")
+
+            return GrowwAPI(access_token)
+
+        except Exception as exc:
+            # Never log credential values or exception details.
+            log.error(
+                "Groww TOTP authentication failed (%s)",
+                type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Groww TOTP authentication failed. "
+                    f"({type(exc).__name__}). Check the credentials and SDK configuration."
+                ),
+            ) from None
+
+    # Fall back to a pre-generated access token only if valid.
+    access_token = _env("groww_access_token")
+
+    if access_token:
+        if _token_expired(access_token):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Groww access token is expired and valid TOTP "
+                    "credentials are not configured."
+                ),
+            )
+
+        return GrowwAPI(access_token)
+
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            "Groww credentials are not configured. "
+            "Provide a TOTP token and TOTP secret, "
+            "or a valid access token."
+        ),
+    )
 
 def _get_client(force_new: bool = False):
     global _client, _client_born
@@ -248,6 +362,35 @@ def _ensure_feed(symbols: list[str]) -> dict[str, tuple[str, str]]:
         if fresh:
             _feed.subscribe_ltp(fresh, on_data_received=lambda *_a, **_k: None)
         return mapping
+
+
+def feed_snapshot(symbols: list[str]) -> dict[str, dict]:
+    """{yahoo_symbol: {"ltp": float, "ts": int}} read directly from the
+    SAME shared GrowwFeed connection `/api/live/ws` uses -- for a backend
+    process (e.g. api/intraday_monitor.py) that wants realtime ticks without
+    opening a websocket to itself. Subscribes any new symbols on that one
+    shared feed (never a second connection) and returns its current
+    snapshot. Best-effort: {} if the feed isn't available yet (e.g. no
+    Groww credentials, or no ticks received for these symbols so far) --
+    callers fall back to `ltp_map`'s REST poll, exactly like `live_ws` does
+    on a cold start."""
+    if not symbols:
+        return {}
+    try:
+        mapping = _ensure_feed(symbols)
+    except Exception:
+        return {}
+    if not mapping or _feed is None:
+        return {}
+    snap = _feed.get_ltp() or {}
+    out: dict[str, dict] = {}
+    for sym, (exch, etok) in mapping.items():
+        d = ((snap.get(exch) or {}).get("CASH") or {}).get(etok)
+        if not d or not d.get("ltp"):
+            continue
+        ts_ms = d.get("tsInMillis") or 0
+        out[sym] = {"ltp": float(d["ltp"]), "ts": int(ts_ms / 1000) if ts_ms else int(time.time())}
+    return out
 
 
 @router.websocket("/ws")

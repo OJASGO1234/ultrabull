@@ -1,0 +1,1295 @@
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: GANESHCO.NS"}}}
+$GANESHCO.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['GANESHCO.NS']: possibly delisted; no timezone found
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: LTIM.NS"}}}
+$LTIM.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['LTIM.NS']: possibly delisted; no timezone found
+$TATAMOTORS.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['TATAMOTORS.NS']: possibly delisted; no timezone found
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+$GANESHCO.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['GANESHCO.NS']: possibly delisted; no timezone found
+$LTIM.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['LTIM.NS']: possibly delisted; no timezone found
+$TATAMOTORS.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['TATAMOTORS.NS']: possibly delisted; no timezone found
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+$GANESHCO.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['GANESHCO.NS']: possibly delisted; no timezone found
+$LTIM.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['LTIM.NS']: possibly delisted; no timezone found
+$TATAMOTORS.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['TATAMOTORS.NS']: possibly delisted; no timezone found
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+$GANESHCO.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['GANESHCO.NS']: possibly delisted; no timezone found
+$LTIM.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['LTIM.NS']: possibly delisted; no timezone found
+$TATAMOTORS.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['TATAMOTORS.NS']: possibly delisted; no timezone found
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+Universe breadth isolation: FROZEN baseline config (trail_atr=1.5, unchanged), FROZEN years=4.0 (the ORIGINAL baseline's window, unchanged).
+ONLY the universe changes: 37 symbols (original) -> 111 symbols (this run).
+
+======================================================================
+3M -- 111-symbol universe, years=4.0 (trail_atr=1.5, unchanged)
+======================================================================
+momentum_strategy: skipping GANESHCO.NS (No data for GANESHCO.NS)
+momentum_strategy: skipping LTIM.NS (No data for LTIM.NS)
+momentum_strategy: skipping TATAMOTORS.NS (No data for TATAMOTORS.NS)
+symbols loaded: 108 | OVERALL: {'trades': 246, 'win_rate': 0.3902439024390244, 'avg_win': 5724.5284756748215, 'avg_loss': -2741.541590497202, 'profit_factor': 1.3363642693333873, 'expectancy': 562.290630447978, 'total_pnl': 138323.49509020257, 'median_hold_bars': 7.0, 'total_fees': 0.0}
+TRAIN: {'trades': 183, 'win_rate': 0.41530054644808745, 'avg_win': 6153.215258473265, 'avg_loss': -2583.0575605820386, 'profit_factor': 1.6919901827781851, 'expectancy': 1045.121315091202, 'total_pnl': 191257.20066168995, 'median_hold_bars': 7.0, 'total_fees': 0.0}
+VALID: {'trades': 63, 'win_rate': 0.31746031746031744, 'avg_win': 4095.5187010407344, 'avg_loss': -3135.9088277279548, 'profit_factor': 0.6074450896803835, 'expectancy': -840.217548753768, 'total_pnl': -52933.705571487386, 'median_hold_bars': 5.0, 'total_fees': 0.0}
+
+======================================================================
+6M -- 111-symbol universe, years=4.0 (trail_atr=1.5, unchanged)
+======================================================================
+momentum_strategy: skipping GANESHCO.NS (No data for GANESHCO.NS)
+momentum_strategy: skipping LTIM.NS (No data for LTIM.NS)
+momentum_strategy: skipping TATAMOTORS.NS (No data for TATAMOTORS.NS)
+symbols loaded: 108 | OVERALL: {'trades': 195, 'win_rate': 0.38461538461538464, 'avg_win': 5176.393417141894, 'avg_loss': -3025.191199503865, 'profit_factor': 1.0694351769383266, 'expectancy': 129.2644222829651, 'total_pnl': 25206.562345178198, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+TRAIN: {'trades': 146, 'win_rate': 0.4041095890410959, 'avg_win': 5189.467713113297, 'avg_loss': -2850.390782897724, 'profit_factor': 1.23467077474602, 'expectancy': 398.5931298738528, 'total_pnl': 58194.5969615825, 'median_hold_bars': 7.0, 'total_fees': 0.0}
+VALID: {'trades': 49, 'win_rate': 0.32653061224489793, 'avg_win': 5128.181950747345, 'avg_loss': -3486.0286614655106, 'profit_factor': 0.7132446374671888, 'expectancy': -673.225196253149, 'total_pnl': -32988.0346164043, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+
+======================================================================
+9M -- 111-symbol universe, years=4.0 (trail_atr=1.5, unchanged)
+======================================================================
+momentum_strategy: skipping GANESHCO.NS (No data for GANESHCO.NS)
+momentum_strategy: skipping LTIM.NS (No data for LTIM.NS)
+momentum_strategy: skipping TATAMOTORS.NS (No data for TATAMOTORS.NS)
+symbols loaded: 108 | OVERALL: {'trades': 167, 'win_rate': 0.3772455089820359, 'avg_win': 5079.592432222391, 'avg_loss': -3002.5749080348387, 'profit_factor': 1.0248073385461267, 'expectancy': 46.386423918487765, 'total_pnl': 7746.532794387456, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+TRAIN: {'trades': 116, 'win_rate': 0.35344827586206895, 'avg_win': 4776.316432718798, 'avg_loss': -2952.463397805892, 'profit_factor': 0.8843642177444098, 'expectancy': -220.73949218940672, 'total_pnl': -25605.781093971178, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+VALID: {'trades': 51, 'win_rate': 0.43137254901960786, 'avg_win': 5644.788613115451, 'avg_loss': -3132.1736413855633, 'profit_factor': 1.3671826408528838, 'expectancy': 653.966938987424, 'total_pnl': 33352.31388835862, 'median_hold_bars': 7.0, 'total_fees': 0.0}
+
+======================================================================
+12M -- 111-symbol universe, years=4.0 (trail_atr=1.5, unchanged)
+======================================================================
+momentum_strategy: skipping GANESHCO.NS (No data for GANESHCO.NS)
+momentum_strategy: skipping LTIM.NS (No data for LTIM.NS)
+momentum_strategy: skipping TATAMOTORS.NS (No data for TATAMOTORS.NS)
+symbols loaded: 108 | OVERALL: {'trades': 126, 'win_rate': 0.42857142857142855, 'avg_win': 5938.615844983532, 'avg_loss': -3163.709549935757, 'profit_factor': 1.4078289468222809, 'expectancy': 737.2870478867957, 'total_pnl': 92898.16803373625, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+TRAIN: {'trades': 82, 'win_rate': 0.4268292682926829, 'avg_win': 6552.694287040409, 'avg_loss': -3342.0561986022703, 'profit_factor': 1.460078965899838, 'expectancy': 881.3129111232635, 'total_pnl': 72267.6587121076, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+VALID: {'trades': 44, 'win_rate': 0.4318181818181818, 'avg_win': 4807.418714878759, 'avg_loss': -2828.4178504427123, 'profit_factor': 1.2917604174842763, 'expectancy': 468.8752118551963, 'total_pnl': 20630.509321628637, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+
+Wrote summary: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\momentum_universe_breadth_results.csv
+Wrote trade log: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\momentum_universe_breadth_trades.csv
+Wrote signal accounting: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\momentum_universe_breadth_signal_accounting.csv
+
+==============================================================================
+37-symbol (original) vs 111-symbol (this run) -- SAME years=4.0, SAME trail_atr=1.5
+==============================================================================
+lookback  overall_trades_111sym  overall_win_rate_111sym  overall_profit_factor_111sym  train_profit_factor_111sym  valid_profit_factor_111sym  overall_total_pnl_111sym  overall_trades_37sym  overall_win_rate_37sym  overall_profit_factor_37sym  train_profit_factor_37sym  valid_profit_factor_37sym  overall_total_pnl_37sym
+      3M                    246                 0.390244                      1.336364                    1.691990                    0.607445             138323.495090                   221                0.330317                     0.691709                   0.719822                   0.627471           -129211.194425
+      6M                    195                 0.384615                      1.069435                    1.234671                    0.713245              25206.562345                   174                0.367816                     0.937307                   0.980959                   0.827701            -20440.879173
+      9M                    167                 0.377246                      1.024807                    0.884364                    1.367183               7746.532794                   136                0.404412                     0.953405                   1.204360                   0.578667            -11059.768091
+     12M                    126                 0.428571                      1.407829                    1.460079                    1.291760              92898.168034                   118                0.398305                     0.910059                   1.023525                   0.752209            -19313.392317
+
+Pooled VALID, 37-symbol (original): {'trades': 200, 'win_rate': 0.31, 'avg_win': 4509.078505552244, 'avg_loss': -2938.092468815616, 'profit_factor': 0.6895010626138375, 'expectancy': -629.46946676158, 'total_pnl': -125893.893352316, 'median_hold_bars': 7.0, 'total_fees': 0.0}
+Pooled VALID, 111-symbol (this run): {'trades': 207, 'win_rate': 0.3719806763285024, 'avg_win': 4928.410263688422, 'avg_loss': -3164.8192867839457, 'profit_factor': 0.9223702984309184, 'expectancy': -154.2942849174127, 'total_pnl': -31938.91697790443, 'median_hold_bars': 6.0, 'total_fees': 0.0}
+
+Top-5 concentration, 37-symbol (original): 28.4% -- {'HINDCOPPER.NS': 47, 'ADANIPORTS.NS': 38, 'M&M.NS': 34, 'EICHERMOT.NS': 34, 'NTPC.NS': 31}
+Top-5 concentration, 111-symbol (this run): 19.3% -- {'HINDCOPPER.NS': 35, 'TORNTPOWER.NS': 30, 'ADANIPOWER.NS': 27, 'PRESTIGE.NS': 25, 'SHRIRAMFIN.NS': 25}

@@ -29,6 +29,7 @@ import { PaperPage } from './components/PaperPage'
 import { Login } from './components/Login'
 import { clearToken, fetchMe, UNAUTHORIZED_EVENT } from './auth'
 import { useLiveQuotes } from './live'
+import { BrandMark } from './components/ui'
 
 type Page = 'analyze' | 'holdings' | 'health' | 'paper'
 
@@ -195,11 +196,16 @@ export default function App() {
   return (
     <div className={wide ? 'page page-wide' : 'page'}>
       <header className="page-head">
-        <h1>Ultrabull</h1>
-        <p className="subtitle">
-          Pattern detection + backtest for one NSE/BSE ticker (Yahoo Finance symbols, e.g.{' '}
-          <code>ATUL.NS</code>)
-        </p>
+        <div className="brand">
+          <BrandMark />
+          <div>
+            <h1>Ultrabull</h1>
+            <p className="subtitle">
+              Pattern detection + backtest for one NSE/BSE ticker (Yahoo Finance symbols, e.g.{' '}
+              <code>ATUL.NS</code>)
+            </p>
+          </div>
+        </div>
         <nav className="tabs" aria-label="Pages">
           <button
             type="button"
@@ -316,8 +322,8 @@ export default function App() {
         </p>
       )}
 
-      {error && <div className="error-banner">⚠ {error}</div>}
-      {loading && <div className="loading">Downloading data, detecting patterns, running backtest…</div>}
+      {error && <div className="error-banner" role="alert">⚠ {error}</div>}
+      {loading && <div className="loading" role="status">Downloading data, detecting patterns, running backtest…</div>}
 
       {data && !loading && (
         <main className="results">

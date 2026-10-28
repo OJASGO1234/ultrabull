@@ -1,0 +1,461 @@
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: GANESHCO.NS"}}}
+$GANESHCO.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['GANESHCO.NS']: possibly delisted; no timezone found
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: LTIM.NS"}}}
+$LTIM.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['LTIM.NS']: possibly delisted; no timezone found
+$TATAMOTORS.NS: possibly delisted; no timezone found
+
+1 Failed download:
+['TATAMOTORS.NS']: possibly delisted; no timezone found
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+C:\Users\ojasg\OneDrive\Documents\ultrabull\core\market_context.py:209: FutureWarning:
+
+The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+
+Universe Size Sensitivity + Proper Walk-Forward (core/MOMENTUM_STRATEGY.md section 16)
+Frozen config: Hypothesis 1 (trail_atr=0.0), reproduced via research_hypothesis1_no_trailing_stop.build_cfg()
+Universe sizes (target -> actual list length): 37->37, 55->55, 75->75, 95->95, 111->111
+Lookbacks: ['3M', '6M', '9M', '12M'] (run independently, never combined)
+Data: years=20.0, cache_dir=C:\Users\ojasg\OneDrive\Documents\ultrabull\core\.momentum_cache
+Walk-forward folds (fixed BEFORE any backtest in this script ran):
+  Fold 1: valid=[2022-01-01, 2023-01-01) train=[<all available history>, 2022-01-01)
+  Fold 2: valid=[2023-01-01, 2024-01-01) train=[<all available history>, 2023-01-01)
+  Fold 3: valid=[2024-01-01, 2025-01-01) train=[<all available history>, 2024-01-01)
+  Fold 4: valid=[2025-01-01, 2026-01-01) train=[<all available history>, 2025-01-01)
+
+Loading the full 111-symbol universe's data ONCE (shared across all universe sizes and lookbacks) ...
+momentum_strategy: skipping GANESHCO.NS (No data for GANESHCO.NS)
+momentum_strategy: skipping LTIM.NS (No data for LTIM.NS)
+momentum_strategy: skipping TATAMOTORS.NS (No data for TATAMOTORS.NS)
+  loaded 108 / 111 symbols (['GANESHCO.NS', 'LTIM.NS', 'TATAMOTORS.NS'] failed to load)
+Building each symbol's market-regime context ONCE (shared across lookbacks/universe sizes) ...
+
+==============================================================================
+Lookback 3M (63 bars) -- computing momentum panels over the full loaded frame set ...
+==============================================================================
+
+--- 3M / universe_size=37 (requested 37 symbols) ---
+  loaded 37/37 symbols | avg eligible pool=16.0 | top5 share of selection slots=27.4% | distinct selected symbols=37 | candidates=1122 trades=979 blocked_rate=12.7%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=741 train_pf=1.3296630747488998 | valid_trades=51 valid_pf=0.5395008350189818
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=792 train_pf=1.2637532969363021 | valid_trades=45 valid_pf=3.0830805488638418
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=837 train_pf=1.3281563076557599 | valid_trades=62 valid_pf=0.6200042670684285
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=899 train_pf=1.2652800167790004 | valid_trades=53 valid_pf=0.9968190316129468
+    Pooled VALID (all 4 folds): trades=211 pf=0.9980087823762349 | trades excluded (entry >= 2026-01-01, outside all folds): 27
+
+--- 3M / universe_size=55 (requested 55 symbols) ---
+  loaded 55/55 symbols | avg eligible pool=23.2 | top5 share of selection slots=21.1% | distinct selected symbols=55 | candidates=1172 trades=1057 blocked_rate=9.8%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=811 train_pf=1.3606213264460247 | valid_trades=60 valid_pf=0.5886080702058477
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=871 train_pf=1.292033150004534 | valid_trades=52 valid_pf=2.072487927357634
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=923 train_pf=1.3281600385486736 | valid_trades=56 valid_pf=0.5333322397518886
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=979 train_pf=1.26952681295421 | valid_trades=47 valid_pf=1.3635273302001847
+    Pooled VALID (all 4 folds): trades=215 pf=0.9842922280694858 | trades excluded (entry >= 2026-01-01, outside all folds): 31
+
+--- 3M / universe_size=75 (requested 75 symbols) ---
+  loaded 74/75 symbols | avg eligible pool=30.0 | top5 share of selection slots=18.6% | distinct selected symbols=74 | candidates=1228 trades=1112 blocked_rate=9.4%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=860 train_pf=1.377489379694605 | valid_trades=63 valid_pf=0.7084612560544857
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=923 train_pf=1.3203829966014196 | valid_trades=52 valid_pf=2.735442790482045
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=975 train_pf=1.3738417356424757 | valid_trades=59 valid_pf=0.599912219914451
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=1034 train_pf=1.316608275192427 | valid_trades=48 valid_pf=1.9303181437461803
+    Pooled VALID (all 4 folds): trades=222 pf=1.2026419630956975 | trades excluded (entry >= 2026-01-01, outside all folds): 30
+
+--- 3M / universe_size=95 (requested 95 symbols) ---
+  loaded 93/95 symbols | avg eligible pool=37.7 | top5 share of selection slots=15.7% | distinct selected symbols=93 | candidates=1297 trades=1169 blocked_rate=9.9%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=895 train_pf=1.2880839559378152 | valid_trades=66 valid_pf=0.7733102124234835
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=961 train_pf=1.2461047805062624 | valid_trades=57 valid_pf=2.743491655513868
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=1018 train_pf=1.304250427827156 | valid_trades=65 valid_pf=0.9151997697268234
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=1083 train_pf=1.2772769763970324 | valid_trades=52 valid_pf=2.436538462285927
+    Pooled VALID (all 4 folds): trades=240 pf=1.42757269790169 | trades excluded (entry >= 2026-01-01, outside all folds): 34
+
+--- 3M / universe_size=111 (requested 111 symbols) ---
+  loaded 108/111 symbols | avg eligible pool=43.6 | top5 share of selection slots=14.3% | distinct selected symbols=108 | candidates=1338 trades=1203 blocked_rate=10.1%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=922 train_pf=1.3163215072111045 | valid_trades=63 valid_pf=1.0451910737395167
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=985 train_pf=1.2974568929437156 | valid_trades=62 valid_pf=2.598326789650439
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=1047 train_pf=1.3536421148560858 | valid_trades=71 valid_pf=0.8298240826004801
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=1118 train_pf=1.3139619055105054 | valid_trades=52 valid_pf=1.9525256474592472
+    Pooled VALID (all 4 folds): trades=248 pf=1.419645484964546 | trades excluded (entry >= 2026-01-01, outside all folds): 33
+
+==============================================================================
+Lookback 6M (126 bars) -- computing momentum panels over the full loaded frame set ...
+==============================================================================
+
+--- 6M / universe_size=37 (requested 37 symbols) ---
+  loaded 37/37 symbols | avg eligible pool=16.9 | top5 share of selection slots=28.9% | distinct selected symbols=37 | candidates=891 trades=773 blocked_rate=13.2%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=575 train_pf=1.443117092347045 | valid_trades=43 valid_pf=0.7608385549009481
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=618 train_pf=1.3851837197339314 | valid_trades=51 valid_pf=1.3511438789246821
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=669 train_pf=1.3825095858766945 | valid_trades=44 valid_pf=0.9039220587065337
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=713 train_pf=1.3486256613051248 | valid_trades=41 valid_pf=1.5532970207567804
+    Pooled VALID (all 4 folds): trades=179 pf=1.119326530561535 | trades excluded (entry >= 2026-01-01, outside all folds): 19
+
+--- 6M / universe_size=55 (requested 55 symbols) ---
+  loaded 55/55 symbols | avg eligible pool=24.5 | top5 share of selection slots=23.9% | distinct selected symbols=55 | candidates=920 trades=811 blocked_rate=11.8%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=618 train_pf=1.2756475727592909 | valid_trades=39 valid_pf=0.9913180950318029
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=657 train_pf=1.2575295727189475 | valid_trades=45 valid_pf=1.0989295065865812
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=702 train_pf=1.246938962251661 | valid_trades=47 valid_pf=1.008812621155557
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=749 train_pf=1.230477185317347 | valid_trades=49 valid_pf=1.111379354661778
+    Pooled VALID (all 4 folds): trades=180 pf=1.0548997240402977 | trades excluded (entry >= 2026-01-01, outside all folds): 13
+
+--- 6M / universe_size=75 (requested 75 symbols) ---
+  loaded 74/75 symbols | avg eligible pool=31.6 | top5 share of selection slots=20.7% | distinct selected symbols=74 | candidates=940 trades=833 blocked_rate=11.4%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=644 train_pf=1.2435210549210816 | valid_trades=40 valid_pf=1.3234198481133213
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=684 train_pf=1.2480376932682031 | valid_trades=44 valid_pf=2.41888039198152
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=728 train_pf=1.300850306409387 | valid_trades=45 valid_pf=0.7884772436871501
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=773 train_pf=1.265246481608065 | valid_trades=45 valid_pf=1.2856334879349733
+    Pooled VALID (all 4 folds): trades=174 pf=1.3532110183609345 | trades excluded (entry >= 2026-01-01, outside all folds): 15
+
+--- 6M / universe_size=95 (requested 95 symbols) ---
+  loaded 93/95 symbols | avg eligible pool=39.5 | top5 share of selection slots=18.2% | distinct selected symbols=93 | candidates=981 trades=877 blocked_rate=10.6%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=665 train_pf=1.3433585801103378 | valid_trades=46 valid_pf=1.171388717858157
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=711 train_pf=1.3319018292894118 | valid_trades=45 valid_pf=2.079483304072723
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=756 train_pf=1.3683352973671359 | valid_trades=58 valid_pf=0.7533665911906989
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=814 train_pf=1.3157830870771483 | valid_trades=46 valid_pf=1.651589747841411
+    Pooled VALID (all 4 folds): trades=195 pf=1.2938370593169912 | trades excluded (entry >= 2026-01-01, outside all folds): 17
+
+--- 6M / universe_size=111 (requested 111 symbols) ---
+  loaded 108/111 symbols | avg eligible pool=45.6 | top5 share of selection slots=16.7% | distinct selected symbols=107 | candidates=1021 trades=911 blocked_rate=10.8%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=681 train_pf=1.350809923607297 | valid_trades=47 valid_pf=1.0259724025970596
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=728 train_pf=1.3282163905671511 | valid_trades=49 valid_pf=2.0554598172221867
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=777 train_pf=1.3653940779149576 | valid_trades=64 valid_pf=0.7801509525358042
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=841 train_pf=1.3130447626867212 | valid_trades=50 valid_pf=1.6626656951595393
+    Pooled VALID (all 4 folds): trades=210 pf=1.2663380552416483 | trades excluded (entry >= 2026-01-01, outside all folds): 20
+
+==============================================================================
+Lookback 9M (189 bars) -- computing momentum panels over the full loaded frame set ...
+==============================================================================
+
+--- 9M / universe_size=37 (requested 37 symbols) ---
+  loaded 37/37 symbols | avg eligible pool=17.3 | top5 share of selection slots=31.5% | distinct selected symbols=37 | candidates=777 trades=641 blocked_rate=17.5%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=484 train_pf=1.5288335511881248 | valid_trades=29 valid_pf=0.4003335070930249
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=513 train_pf=1.4366102171440638 | valid_trades=40 valid_pf=2.143361360973147
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=553 train_pf=1.4795118888879053 | valid_trades=36 valid_pf=0.6905621406034597
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=589 train_pf=1.417541480200355 | valid_trades=34 valid_pf=1.6702947469160756
+    Pooled VALID (all 4 folds): trades=139 pf=1.1322793308278045 | trades excluded (entry >= 2026-01-01, outside all folds): 18
+
+--- 9M / universe_size=55 (requested 55 symbols) ---
+  loaded 55/55 symbols | avg eligible pool=25.0 | top5 share of selection slots=25.6% | distinct selected symbols=55 | candidates=762 trades=659 blocked_rate=13.5%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=498 train_pf=1.582474414819216 | valid_trades=36 valid_pf=0.860821556826037
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=534 train_pf=1.5231285321817023 | valid_trades=39 valid_pf=2.859918915981055
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=573 train_pf=1.5890920597749056 | valid_trades=39 valid_pf=0.9069130906148629
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=612 train_pf=1.534118669426802 | valid_trades=32 valid_pf=1.2655815051332733
+    Pooled VALID (all 4 folds): trades=146 pf=1.321334279270132 | trades excluded (entry >= 2026-01-01, outside all folds): 15
+
+--- 9M / universe_size=75 (requested 75 symbols) ---
+  loaded 74/75 symbols | avg eligible pool=32.4 | top5 share of selection slots=23.0% | distinct selected symbols=74 | candidates=791 trades=703 blocked_rate=11.1%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=520 train_pf=1.359442499963655 | valid_trades=37 valid_pf=0.8189650689073543
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=557 train_pf=1.317401808641545 | valid_trades=41 valid_pf=2.258526245770409
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=598 train_pf=1.3681520492596344 | valid_trades=49 valid_pf=0.604440258950368
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=647 train_pf=1.2924918527732483 | valid_trades=35 valid_pf=1.8892579303598822
+    Pooled VALID (all 4 folds): trades=162 pf=1.1933836194385157 | trades excluded (entry >= 2026-01-01, outside all folds): 21
+
+--- 9M / universe_size=95 (requested 95 symbols) ---
+  loaded 93/95 symbols | avg eligible pool=40.4 | top5 share of selection slots=19.8% | distinct selected symbols=91 | candidates=850 trades=750 blocked_rate=11.8%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=554 train_pf=1.4753887004083441 | valid_trades=41 valid_pf=0.6162153175162514
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=595 train_pf=1.398056233022898 | valid_trades=46 valid_pf=2.1468684927883315
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=641 train_pf=1.4419204603550497 | valid_trades=52 valid_pf=0.5451290520825637
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=693 train_pf=1.3538008040369889 | valid_trades=38 valid_pf=2.0041828564415956
+    Pooled VALID (all 4 folds): trades=177 pf=1.119175445142902 | trades excluded (entry >= 2026-01-01, outside all folds): 19
+
+--- 9M / universe_size=111 (requested 111 symbols) ---
+  loaded 108/111 symbols | avg eligible pool=46.5 | top5 share of selection slots=18.4% | distinct selected symbols=103 | candidates=873 trades=764 blocked_rate=12.5%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=561 train_pf=1.438176829324733 | valid_trades=36 valid_pf=0.7371737401448487
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=597 train_pf=1.3854724784906194 | valid_trades=50 valid_pf=1.8247194471105026
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=647 train_pf=1.4155649004913553 | valid_trades=54 valid_pf=0.5580427848051404
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=701 train_pf=1.3306312101573599 | valid_trades=43 valid_pf=1.557888461378032
+    Pooled VALID (all 4 folds): trades=183 pf=1.0794834402587858 | trades excluded (entry >= 2026-01-01, outside all folds): 20
+
+==============================================================================
+Lookback 12M (252 bars) -- computing momentum panels over the full loaded frame set ...
+==============================================================================
+
+--- 12M / universe_size=37 (requested 37 symbols) ---
+  loaded 37/37 symbols | avg eligible pool=17.7 | top5 share of selection slots=34.1% | distinct selected symbols=37 | candidates=684 trades=585 blocked_rate=14.5%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=423 train_pf=1.7339083094406424 | valid_trades=34 valid_pf=0.9431079575944281
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=457 train_pf=1.6602185315168083 | valid_trades=33 valid_pf=3.877935165445521
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=490 train_pf=1.7548428093875346 | valid_trades=40 valid_pf=0.756274070600617
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=530 train_pf=1.6519757258645726 | valid_trades=38 valid_pf=1.0190683610950086
+    Pooled VALID (all 4 folds): trades=145 pf=1.2638191361318556 | trades excluded (entry >= 2026-01-01, outside all folds): 17
+
+--- 12M / universe_size=55 (requested 55 symbols) ---
+  loaded 55/55 symbols | avg eligible pool=25.5 | top5 share of selection slots=28.9% | distinct selected symbols=55 | candidates=699 trades=601 blocked_rate=14.0%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=440 train_pf=1.6784127185780362 | valid_trades=35 valid_pf=1.294090883141286
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=475 train_pf=1.6466963439671631 | valid_trades=37 valid_pf=2.5981163960102576
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=512 train_pf=1.7015053973951244 | valid_trades=36 valid_pf=0.9817293443946027
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=548 train_pf=1.6428846831801747 | valid_trades=35 valid_pf=1.0000092857111629
+    Pooled VALID (all 4 folds): trades=143 pf=1.3648680565307947 | trades excluded (entry >= 2026-01-01, outside all folds): 18
+
+--- 12M / universe_size=75 (requested 75 symbols) ---
+  loaded 74/75 symbols | avg eligible pool=33.1 | top5 share of selection slots=25.7% | distinct selected symbols=73 | candidates=720 trades=623 blocked_rate=13.5%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=465 train_pf=1.595695097932323 | valid_trades=32 valid_pf=1.3299884265482476
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=497 train_pf=1.577068849996299 | valid_trades=35 valid_pf=1.6088166240940316
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=532 train_pf=1.5791534198266148 | valid_trades=40 valid_pf=0.8119352578322199
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=572 train_pf=1.509453913366328 | valid_trades=34 valid_pf=1.716566415943719
+    Pooled VALID (all 4 folds): trades=141 pf=1.298787644562259 | trades excluded (entry >= 2026-01-01, outside all folds): 17
+
+--- 12M / universe_size=95 (requested 95 symbols) ---
+  loaded 93/95 symbols | avg eligible pool=41.1 | top5 share of selection slots=21.9% | distinct selected symbols=85 | candidates=758 trades=660 blocked_rate=12.9%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=492 train_pf=1.5674336836541027 | valid_trades=33 valid_pf=1.1099292629295527
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=525 train_pf=1.5348510890705687 | valid_trades=40 valid_pf=2.930040807225932
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=565 train_pf=1.6070080865318548 | valid_trades=47 valid_pf=0.7593586546165361
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=612 train_pf=1.5236414767580646 | valid_trades=35 valid_pf=1.8544728701138324
+    Pooled VALID (all 4 folds): trades=155 pf=1.4576344981352578 | trades excluded (entry >= 2026-01-01, outside all folds): 13
+
+--- 12M / universe_size=111 (requested 111 symbols) ---
+  loaded 108/111 symbols | avg eligible pool=47.4 | top5 share of selection slots=19.9% | distinct selected symbols=98 | candidates=799 trades=690 blocked_rate=13.6%
+    Fold 1 [2022-01-01, 2023-01-01): train_trades=511 train_pf=1.407726737040365 | valid_trades=34 valid_pf=0.6004642121123319
+    Fold 2 [2023-01-01, 2024-01-01): train_trades=545 train_pf=1.343265459615266 | valid_trades=42 valid_pf=2.7346890164690345
+    Fold 3 [2024-01-01, 2025-01-01): train_trades=587 train_pf=1.415765529312557 | valid_trades=45 valid_pf=1.0073675481810518
+    Fold 4 [2025-01-01, 2026-01-01): train_trades=632 train_pf=1.3831951614167828 | valid_trades=40 valid_pf=2.1769519793561147
+    Pooled VALID (all 4 folds): trades=161 pf=1.4721427830562472 | trades excluded (entry >= 2026-01-01, outside all folds): 18
+
+Wrote results: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\universe_size_sensitivity_results.csv (180 rows)
+Wrote trade log: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\universe_size_sensitivity_trades.csv (16401 rows)
+Wrote concentration report: C:\Users\ojasg\OneDrive\Documents\ultrabull\core\universe_size_sensitivity_concentration.csv (20 rows)
+
+==============================================================================
+POOLED VALIDATION PROFIT FACTOR, by lookback x universe_size (evidence only -- no
+configuration is being selected or ranked as 'best').
+==============================================================================
+lookback  universe_size  trades  win_rate  profit_factor  expectancy     total_pnl
+      3M             37     211  0.336493       0.998009   -7.001904  -1477.401657
+      3M             55     215  0.334884       0.984292  -54.691895 -11758.757366
+      3M             75     222  0.382883       1.202642  659.325759 146370.318581
+      3M             95     240  0.425000       1.427573 1296.456269 311149.504560
+      3M            111     248  0.419355       1.419645 1266.480931 314087.270917
+      6M             37     179  0.363128       1.119327  399.822341  71568.198981
+      6M             55     180  0.344444       1.054900  187.143496  33685.829335
+      6M             75     174  0.408046       1.353211 1091.734103 189961.733955
+      6M             95     195  0.394872       1.293837  913.957640 178221.739754
+      6M            111     210  0.390476       1.266338  830.319582 174367.112236
+      9M             37     139  0.366906       1.132279  441.688362  61394.682295
+      9M             55     146  0.404110       1.321334 1020.353347 148971.588696
+      9M             75     162  0.376543       1.193384  630.642802 102164.133939
+      9M             95     177  0.361582       1.119175  393.951767  69729.462784
+      9M            111     183  0.355191       1.079483  265.461632  48579.478636
+     12M             37     145  0.393103       1.263819  853.912605 123817.327740
+     12M             55     143  0.412587       1.364868 1130.883363 161716.320900
+     12M             75     141  0.397163       1.298788  952.462925 134297.272435
+     12M             95     155  0.425806       1.457634 1369.857079 212327.847257
+     12M            111     161  0.422360       1.472143 1406.157375 226391.337448

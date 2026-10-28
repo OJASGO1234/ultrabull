@@ -1,0 +1,110 @@
+/* ==========================================================================
+   Paper page only. Everything is scoped under .paper so it cannot touch other
+   pages. Shared look (cards, tiles, pills, buttons) comes from the design
+   system -- this file only holds what is unique to the Paper page.
+   ========================================================================== */
+
+/* Sell button is coral so a sell is never mistaken for a buy. */
+.paper .controls button.is-sell {
+  background: var(--critical);
+}
+.paper .controls button.is-sell:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(248, 113, 113, 0.25);
+}
+
+/* Four portfolio metrics: 4 across on desktop, 2 across on phones. */
+.paper-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.paper-metrics .tile-value {
+  font-size: 26px;
+}
+
+/* Risk panel */
+.paper-risk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.paper-risk-value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Label/value rows */
+.kv {
+  margin: var(--space-4) 0 0;
+}
+.kv > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--grid);
+}
+.kv > div:last-child {
+  border-bottom: none;
+}
+.kv dt {
+  color: var(--text-secondary);
+}
+.kv dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chart fades in when it is created (not on every data poll). */
+.chart-reveal {
+  animation: rise-in var(--dur-slow) var(--ease) backwards;
+}
+
+.paper-trade input {
+  flex: 0 1 130px;
+  min-width: 90px;
+}
+
+/* Tiles that carry text (ticker + price facts) instead of a short number:
+   full row, wrapping instead of clipping, smaller type than numeric tiles. */
+.tiles > .tile { min-width: 0; }
+.tile-wide { grid-column: 1 / -1; }
+.tile-text .tile-value {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.tile-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tile-facts > span { white-space: nowrap; }
+.tile-note { overflow-wrap: anywhere; }
+
+/* Settings fields: label above input, fields share the row and wrap on phones. */
+.paper .paper-cfg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 150px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.paper .paper-cfg input { width: 100%; min-width: 0; flex: none; }
+.paper .controls { margin: var(--space-3) 0 0; align-items: flex-end; }
+
+/* Long pill labels may wrap rather than push the page sideways. */
+.paper .status-pill { white-space: normal; max-width: 100%; }
+
+@media (max-width: 600px) {
+  .paper-trade input { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .paper-trade button { flex: 1 1 100%; }
+  .paper-metrics .tile-value { font-size: 22px; }
+  .paper .card-head { flex-wrap: wrap; }
+}

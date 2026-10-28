@@ -74,6 +74,9 @@ from .live import router as live_router, groww_router
 from .paper import router as paper_router
 from .deals import router as deals_router
 from .momentum_paper import router as momentum_paper_router
+from .momentum_monitor import router as momentum_monitor_router
+from .intraday_monitor import router as intraday_monitor_router
+from .rag.router import router as rag_router
 
 app = FastAPI(title="Ultrabull API")
 
@@ -90,6 +93,9 @@ app.include_router(groww_router)
 app.include_router(paper_router)
 app.include_router(deals_router)
 app.include_router(momentum_paper_router)
+app.include_router(momentum_monitor_router)
+app.include_router(intraday_monitor_router)
+app.include_router(rag_router)
 
 
 @app.on_event("startup")
@@ -97,6 +103,25 @@ def _start_paper_executor():
     """Background loop that fills pending paper orders when live prices hit."""
     from .paper import start_executor
     start_executor()
+
+
+@app.on_event("startup")
+def _start_momentum_monitor_scheduler():
+    """Daily automatic momentum-monitoring cycle (api/momentum_monitor.py) --
+    same in-process background-thread pattern as the paper executor above,
+    just at a once-a-day cadence. No-ops if MOMENTUM_MONITOR_ENABLED=0."""
+    from .momentum_monitor import start_monitor_scheduler
+    start_monitor_scheduler()
+
+
+@app.on_event("startup")
+def _start_intraday_monitor_scheduler():
+    """Intraday paper-monitoring PROTOTYPE (api/intraday_monitor.py) -- a
+    separate experiment from the daily momentum monitor above; same
+    background-thread pattern, gated additionally by its own /start /stop
+    toggle (see that module). No-ops if INTRADAY_MONITOR_ENABLED=0."""
+    from .intraday_monitor import start_intraday_scheduler
+    start_intraday_scheduler()
 
 # ---------- auth (enforced only when ULTRABULL_AUTH=1 — i.e. in production) ----------
 

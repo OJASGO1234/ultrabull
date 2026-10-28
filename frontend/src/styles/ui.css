@@ -1,0 +1,373 @@
+/* ==========================================================================
+   Shared UI layer: app shell, motion, buttons, and the reusable components in
+   src/components/ui (Panel, SectionHeader, MetricCard, StatusPill, Button,
+   Skeleton, EmptyState, MeterBar). Imported after index.css.
+   Page-specific styles stay in their own scoped files (e.g. paper.css).
+   ========================================================================== */
+
+/* ---- Base ---------------------------------------------------------------- */
+::selection {
+  background: rgba(45, 212, 191, 0.3);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--baseline) transparent;
+}
+
+/* ---- App shell: brand + header ------------------------------------------- */
+.page-head {
+  margin-bottom: var(--space-5);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 12px rgba(45, 212, 191, 0.35));
+}
+
+.brand .subtitle {
+  font-size: 13px;
+}
+
+/* ---- Motion: sections enter with a subtle fade + rise --------------------- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Whatever page is mounted (not the header, not floating chat widgets) fades in.
+   Switching tabs mounts new elements, which is what replays the animation. */
+.page > :not(.page-head):not(.results):not(.grid-12):not(.chat-fab):not(.chat-panel) {
+  animation: rise-in var(--dur-slow) var(--ease) backwards;
+}
+
+/* Grids/lists of cards stagger: each child starts a little after the last. */
+.results > *,
+.grid-12 > * {
+  animation: rise-in var(--dur-slow) var(--ease) backwards;
+}
+.results > :nth-child(2), .grid-12 > :nth-child(2) { animation-delay: 40ms; }
+.results > :nth-child(3), .grid-12 > :nth-child(3) { animation-delay: 80ms; }
+.results > :nth-child(4), .grid-12 > :nth-child(4) { animation-delay: 120ms; }
+.results > :nth-child(5), .grid-12 > :nth-child(5) { animation-delay: 160ms; }
+.results > :nth-child(6), .grid-12 > :nth-child(6) { animation-delay: 200ms; }
+.results > :nth-child(n + 7), .grid-12 > :nth-child(n + 7) { animation-delay: 240ms; }
+
+/* ---- Buttons --------------------------------------------------------------
+   Existing call sites use several class names; they share one feel here:
+   hover lifts + brightens, :active presses, disabled is flat. */
+.controls button,
+.detail-actions button,
+.login-card button,
+.chat-input button,
+.chat-fab,
+.btn-primary {
+  transition: transform var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease),
+    box-shadow var(--dur) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.controls button:hover:not(:disabled),
+.detail-actions button:hover:not(:disabled),
+.login-card button:hover:not(:disabled),
+.chat-input button:hover:not(:disabled),
+.chat-fab:hover,
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(45, 212, 191, 0.22);
+}
+
+.controls button:active:not(:disabled),
+.detail-actions button:active:not(:disabled),
+.login-card button:active:not(:disabled),
+.chat-input button:active:not(:disabled),
+.chat-fab:active,
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(0.96);
+  box-shadow: none;
+}
+
+.controls button:disabled,
+.detail-actions button:disabled,
+.login-card button:disabled,
+.chat-input button:disabled,
+.btn:disabled {
+  cursor: not-allowed;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+  background: var(--surface-3) !important;
+}
+
+/* <Button> from components/ui/Button.tsx */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font: inherit;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  padding: 8px 18px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+}
+
+.btn[aria-busy='true'] {
+  cursor: progress;
+}
+
+.btn-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Panel + SectionHeader -------------------------------------------------- */
+.panel.panel-lift:hover {
+  transform: translateY(-2px);
+}
+
+.card-head {
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.card-head h2 {
+  margin: 0;
+}
+
+.section-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: var(--space-2);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---- MetricCard (extends .tile) -------------------------------------------- */
+.metric .tile-value.tone-up { color: var(--good); }
+.metric .tile-value.tone-down { color: var(--critical); }
+.metric .tile-value.tone-warn { color: var(--warning); }
+.metric .tile-note.tone-up { color: var(--good); }
+.metric .tile-note.tone-down { color: var(--critical); }
+
+/* Brief highlight when a REAL value just changed (never on first render). */
+@keyframes value-tick {
+  from { background-color: rgba(45, 212, 191, 0.22); }
+  to { background-color: transparent; }
+}
+.metric.is-updated .tile-value {
+  animation: value-tick 900ms var(--ease);
+  border-radius: 4px;
+}
+
+/* ---- StatusPill ------------------------------------------------------------ */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 11px 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill .pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status-pill.pill-good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); background: color-mix(in srgb, var(--good) 8%, var(--surface-1)); }
+.status-pill.pill-good .pill-dot { background: var(--good); }
+.status-pill.pill-bad { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 45%, transparent); background: color-mix(in srgb, var(--critical) 8%, var(--surface-1)); }
+.status-pill.pill-bad .pill-dot { background: var(--critical); }
+.status-pill.pill-warn { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); background: color-mix(in srgb, var(--warning) 8%, var(--surface-1)); }
+.status-pill.pill-warn .pill-dot { background: var(--warning); }
+.status-pill.pill-info { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
+.status-pill.pill-info .pill-dot { background: var(--accent); }
+
+/* Only rendered when the caller says the underlying state is genuinely live. */
+.status-pill.is-pulsing .pill-dot {
+  animation: pill-pulse 2s ease-in-out infinite;
+}
+@keyframes pill-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); }
+  70%, 100% { box-shadow: 0 0 0 7px transparent; }
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+/* ---- Skeleton + EmptyState --------------------------------------------------- */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--baseline);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+}
+.empty-card strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.empty-card span {
+  font-size: 12px;
+}
+
+/* ---- Notices (flash / error text inside cards) --------------------------------- */
+.notice {
+  margin: var(--space-2) 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  animation: rise-in var(--dur) var(--ease) backwards;
+}
+.notice-good { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); background: color-mix(in srgb, var(--good) 7%, var(--surface-1)); }
+.notice-bad { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 40%, transparent); background: color-mix(in srgb, var(--critical) 8%, var(--surface-1)); }
+
+/* ---- MeterBar (value against a limit) --------------------------------------------- */
+.meter {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-slow) var(--ease), background var(--dur) var(--ease);
+}
+.meter.tone-warn .meter-fill { background: var(--warning); }
+.meter.tone-bad .meter-fill { background: var(--critical); }
+.meter-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 12-column page grid (used by Paper; any page can adopt it) --------------------- */
+.grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+.grid-12 > * {
+  grid-column: span 12;
+  min-width: 0; /* lets wide tables scroll inside their card instead of stretching the grid */
+}
+.grid-12 > .span-8 { grid-column: span 8; }
+.grid-12 > .span-6 { grid-column: span 6; }
+.grid-12 > .span-4 { grid-column: span 4; }
+
+@media (max-width: 900px) {
+  .grid-12 > .span-8,
+  .grid-12 > .span-6,
+  .grid-12 > .span-4 {
+    grid-column: span 12;
+  }
+}
+
+/* ---- Small screens ---------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .page {
+    padding: var(--space-4) var(--space-3) 48px;
+  }
+  .grid-12 {
+    gap: var(--space-3);
+  }
+  .card {
+    padding: 14px;
+  }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .page-head h1 {
+    font-size: 20px;
+  }
+}

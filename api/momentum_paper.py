@@ -88,6 +88,21 @@ def _db() -> sqlite3.Connection:
         );
         """
     )
+    # Additive migration for api/momentum_monitor.py's close-tracking (a
+    # recommendation that reaches status='closed' records how/when/at what
+    # price -- see that module for the monitoring cycle that writes these).
+    # ALTER TABLE ADD COLUMN is a no-op-safe, non-destructive sqlite
+    # migration; re-running it every call (like the CREATE TABLE IF NOT
+    # EXISTS above) is intentional so a pre-existing db file picks up the
+    # new columns without a separate migration step.
+    existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(momentum_recommendations)").fetchall()}
+    with conn:
+        for col, decl in (
+            ("closed_at", "TEXT"), ("exit_price", "REAL"),
+            ("exit_reason", "TEXT"), ("close_realized_pnl", "REAL"),
+        ):
+            if col not in existing_cols:
+                conn.execute(f"ALTER TABLE momentum_recommendations ADD COLUMN {col} {decl}")
     return conn
 
 
@@ -117,7 +132,49 @@ _REC_COLS = [
     "as_of_date", "suggested_entry", "sl_est", "tp_est", "sl_atr", "tp_atr",
     "absolute_momentum", "relative_momentum", "rank", "reasons", "status",
     "executed_at", "actual_entry", "paper_trade_id",
+    "closed_at", "exit_price", "exit_reason", "close_realized_pnl",
 ]
+
+
+def _record_recommendation(
+    conn: sqlite3.Connection, user: str, sym: str, cfg: MomentumConfig,
+    lookback: str, row: dict, as_of_date: str, config_dict: dict,
+) -> dict:
+    """Insert an IMMUTABLE recommendation row if one doesn't already exist
+    for (user, symbol, strategy, as_of_date) -- the idempotency key used
+    throughout this module and by api/momentum_monitor.py's cycle, so
+    calling this twice for the same signal never creates a duplicate.
+    `suggested_entry` (and every other field) is written exactly once here
+    and never updated by any other function in this module. Shared by
+    POST /snapshot (one symbol, human-triggered) and the monitoring
+    cycle (a whole universe scan, machine-triggered) -- same code path,
+    so the two can never silently diverge in what counts as a
+    recommendation."""
+    existing = conn.execute(
+        "SELECT id FROM momentum_recommendations WHERE username=? AND symbol=? AND strategy=? AND as_of_date=?",
+        (user, sym, cfg.tag, as_of_date),
+    ).fetchone()
+    if existing:
+        return {"ok": True, "id": existing[0], "already_existed": True,
+                "suggested_entry": row["entry_est"], "as_of_date": as_of_date}
+
+    created_at = datetime.now().isoformat(timespec="seconds")
+    reasons = json.dumps({
+        "rank": row["rank"], "absolute_momentum": row["absolute_momentum"],
+        "relative_momentum": row["relative_momentum"], "technical_confirmed": row["technical_confirmed"],
+        "config": config_dict,
+    })
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO momentum_recommendations (username, created_at, symbol, yahoo_symbol, strategy, "
+            "lookback, as_of_date, suggested_entry, sl_est, tp_est, sl_atr, tp_atr, absolute_momentum, "
+            "relative_momentum, rank, reasons, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')",
+            (user, created_at, sym, sym, cfg.tag, lookback, as_of_date, row["entry_est"],
+             row["sl_est"], row["tp_est"], row["sl_atr"], row["tp_atr"], row["absolute_momentum"],
+             row["relative_momentum"], row["rank"], reasons),
+        )
+    return {"ok": True, "id": cur.lastrowid, "already_existed": False,
+            "suggested_entry": row["entry_est"], "as_of_date": as_of_date}
 
 
 @router.post("/snapshot")
@@ -162,31 +219,9 @@ def create_snapshot(req: SnapshotReq, request: Request):
     as_of_date = str(screen["as_of"].date())
     conn = _db()
     try:
-        existing = conn.execute(
-            "SELECT id FROM momentum_recommendations WHERE username=? AND symbol=? AND strategy=? AND as_of_date=?",
-            (user, sym, cfg.tag, as_of_date),
-        ).fetchone()
-        if existing:
-            return {"ok": True, "id": existing[0], "already_existed": True}
-
-        created_at = datetime.now().isoformat(timespec="seconds")
-        reasons = json.dumps({
-            "rank": row["rank"], "absolute_momentum": row["absolute_momentum"],
-            "relative_momentum": row["relative_momentum"], "technical_confirmed": row["technical_confirmed"],
-            "config": {"top_n": req.top_n, "use_relative": req.use_relative,
-                       "use_technical": req.use_technical, "use_market_regime": req.use_market_regime},
-        })
-        with conn:
-            cur = conn.execute(
-                "INSERT INTO momentum_recommendations (username, created_at, symbol, yahoo_symbol, strategy, "
-                "lookback, as_of_date, suggested_entry, sl_est, tp_est, sl_atr, tp_atr, absolute_momentum, "
-                "relative_momentum, rank, reasons, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')",
-                (user, created_at, sym, sym, cfg.tag, req.lookback, as_of_date, row["entry_est"],
-                 row["sl_est"], row["tp_est"], row["sl_atr"], row["tp_atr"], row["absolute_momentum"],
-                 row["relative_momentum"], row["rank"], reasons),
-            )
-        return {"ok": True, "id": cur.lastrowid, "already_existed": False,
-                "suggested_entry": row["entry_est"], "as_of_date": as_of_date}
+        config_dict = {"top_n": req.top_n, "use_relative": req.use_relative,
+                        "use_technical": req.use_technical, "use_market_regime": req.use_market_regime}
+        return _record_recommendation(conn, user, sym, cfg, req.lookback, row, as_of_date, config_dict)
     finally:
         conn.close()
 
@@ -211,12 +246,43 @@ def list_recommendations(request: Request, status: str | None = None):
         conn.close()
 
 
+def _execute_recommendation_row(
+    conn: sqlite3.Connection, user: str, rec_id: int, rec_d: dict,
+    actual_entry: float, qty: float, note: str | None,
+) -> dict:
+    """Fill a pending recommendation as an ACTUAL paper trade through the
+    EXISTING api/paper.py ledger (`_fill`, imported unmodified). `actual_entry`
+    is stored in its own column -- `suggested_entry` (written once at
+    snapshot time by `_record_recommendation`) is never touched, so the two
+    remain independently inspectable forever. Raises ValueError (insufficient
+    cash, etc., surfaced by `_paper_fill`) or RuntimeError (wrong status) --
+    callers decide how to turn those into an HTTP response or a skip."""
+    if rec_d["status"] != "pending":
+        raise RuntimeError(f"recommendation is already {rec_d['status']}")
+
+    _paper_fill(conn, user, rec_d["symbol"], rec_d["yahoo_symbol"], "BUY", qty,
+                actual_entry, rec_d["sl_est"], rec_d["tp_est"],
+                note or f"momentum snapshot #{rec_id} ({rec_d['strategy']}, {rec_d['as_of_date']})")
+    trade_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    executed_at = datetime.now().isoformat(timespec="seconds")
+    with conn:
+        conn.execute(
+            "UPDATE momentum_recommendations SET status='executed', executed_at=?, actual_entry=?, "
+            "paper_trade_id=? WHERE id=?",
+            (executed_at, actual_entry, trade_id, rec_id),
+        )
+    gap_pct = round(100.0 * (actual_entry - rec_d["suggested_entry"]) / rec_d["suggested_entry"], 2) \
+        if rec_d["suggested_entry"] else None
+    return {"ok": True, "paper_trade_id": trade_id, "suggested_entry": rec_d["suggested_entry"],
+            "actual_entry": actual_entry, "qty": qty, "executed_at": executed_at, "slippage_pct": gap_pct}
+
+
 @router.post("/recommendations/{rec_id}/execute")
 def execute_recommendation(rec_id: int, req: ExecuteReq, request: Request):
-    """Fill a pending recommendation as an ACTUAL paper trade through the
-    EXISTING api/paper.py ledger. `req.actual_entry` is stored in its own
-    column -- `suggested_entry` (written at snapshot time) is never
-    touched, so the two remain independently inspectable forever."""
+    """Fill a pending recommendation as an ACTUAL paper trade -- see
+    `_execute_recommendation_row` (shared with api/momentum_monitor.py's
+    cycle) for what actually happens."""
     user = _paper_user(request)
     if req.qty <= 0:
         raise HTTPException(422, "qty must be positive")
@@ -232,28 +298,12 @@ def execute_recommendation(rec_id: int, req: ExecuteReq, request: Request):
         if rec is None:
             raise HTTPException(404, "no such recommendation")
         rec_d = _row_to_dict(rec, _REC_COLS)
-        if rec_d["status"] != "pending":
-            raise HTTPException(409, f"recommendation is already {rec_d['status']}")
-
         try:
-            _paper_fill(conn, user, rec_d["symbol"], rec_d["yahoo_symbol"], "BUY", req.qty,
-                        req.actual_entry, rec_d["sl_est"], rec_d["tp_est"],
-                        req.note or f"momentum snapshot #{rec_id} ({rec_d['strategy']}, {rec_d['as_of_date']})")
+            return _execute_recommendation_row(conn, user, rec_id, rec_d, req.actual_entry, req.qty, req.note)
+        except RuntimeError as e:
+            raise HTTPException(409, str(e))
         except ValueError as e:
             raise HTTPException(422, str(e))
-        trade_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-        executed_at = datetime.now().isoformat(timespec="seconds")
-        with conn:
-            conn.execute(
-                "UPDATE momentum_recommendations SET status='executed', executed_at=?, actual_entry=?, "
-                "paper_trade_id=? WHERE id=?",
-                (executed_at, req.actual_entry, trade_id, rec_id),
-            )
-        gap_pct = round(100.0 * (req.actual_entry - rec_d["suggested_entry"]) / rec_d["suggested_entry"], 2) \
-            if rec_d["suggested_entry"] else None
-        return {"ok": True, "paper_trade_id": trade_id, "suggested_entry": rec_d["suggested_entry"],
-                "actual_entry": req.actual_entry, "slippage_pct": gap_pct}
     finally:
         conn.close()
 
